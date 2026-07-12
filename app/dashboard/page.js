@@ -154,3 +154,96 @@ export default function DashboardPage() {
         </div>
         <div className="card" style={{ borderColor: 'rgba(63,182,216,0.35)' }}>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, fontWeight: 600 }}>عداد محروق</div>
+          <div className="mono" style={{ fontSize: 34, fontWeight: 800, color: 'var(--meters)' }}>{stats.meters}</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>تقارير العدادات اليوم</div>
+        </div>
+      </div>
+
+      <div className="card" style={{ padding: '10px 14px', marginBottom: 22, display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+          تتصفر عند منتصف الليل خلال <b className="mono" style={{ color: 'var(--text)' }}>{resetCountdown}</b>
+        </div>
+        <div style={{ flex: 1, height: 5, background: 'var(--surface-2)', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${resetPct}%`, background: 'linear-gradient(90deg,var(--transactions),var(--meters))', borderRadius: 3 }} />
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>تقرير جديد</h2>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button onClick={() => setModalType('faults')} style={btnCardStyle()}>
+            <div style={{ fontSize: 22, marginBottom: 6 }}>⚡</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>تقرير عطل</div>
+          </button>
+          <button onClick={() => setModalType('meters')} style={btnCardStyle()}>
+            <div style={{ fontSize: 22, marginBottom: 6 }}>🔌</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>تقرير عداد محروق</div>
+          </button>
+          <button onClick={() => setModalType('daily')} style={btnCardStyle()}>
+            <div style={{ fontSize: 22, marginBottom: 6 }}>📋</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>التقارير اليومية</div>
+          </button>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>البحث في التقارير</h2>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {[['daily', 'يومي'], ['weekly', 'اسبوعي'], ['custom', 'مخصص']].map(([val, label]) => (
+            <button key={val} className={`chip ${period === val ? 'active' : ''}`} onClick={() => setPeriod(val)}>{label}</button>
+          ))}
+        </div>
+
+        {period === 'custom' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 12 }}>
+            <div className="field" style={{ marginTop: 0 }}><label>من</label><input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} /></div>
+            <div className="field" style={{ marginTop: 0 }}><label>إلى</label><input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} /></div>
+          </div>
+        )}
+
+        <div className="field">
+          <label>نوع التقرير</label>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {[['all', 'الكل'], ['faults', 'الأعطال'], ['meters', 'العدادات'], ['daily', 'التقارير اليومية']].map(([val, label]) => (
+              <button key={val} className={`chip ${type === val ? 'active' : ''}`} onClick={() => setType(val)}>{label}</button>
+            ))}
+          </div>
+        </div>
+
+        <div className="field">
+          <label>المنطقة</label>
+          <select value={area} onChange={(e) => setArea(e.target.value)}>
+            <option value="all">كل المناطق</option>
+            {AREA_LIST.map((a) => <option key={a} value={a}>{a}</option>)}
+          </select>
+        </div>
+
+        <button className="btn-primary" onClick={runSearch}>بحث</button>
+
+        {results !== null && (
+          <ResultsList results={results} activeType={type} onChanged={() => { runSearch(); refreshStats(); }} showToast={showToast} />
+        )}
+      </div>
+
+      {modalType && (
+        <ReportModal
+          type={modalType}
+          currentUser={user}
+          onClose={() => setModalType(null)}
+          onSaved={refreshStats}
+        />
+      )}
+
+      {toast && <div className={`toast ${toast.error ? 'error' : 'ok'}`}>{toast.text}</div>}
+    </div>
+  );
+}
+
+function btnCardStyle() {
+  return {
+    flex: 1, minWidth: 150, padding: '16px 12px', borderRadius: 12, border: '1px solid var(--border)',
+    background: 'var(--surface-2)', cursor: 'pointer', textAlign: 'center', color: 'var(--text)',
+    fontFamily: 'Cairo, sans-serif',
+  };
+    }
