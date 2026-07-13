@@ -3,9 +3,10 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import { AREA_LIST } from '../../lib/constants';
-import { searchReports, todaysStats } from '../../lib/reportsApi';
+import { searchReports, todaysStats, checkIsAdmin } from '../../lib/reportsApi';
 import ReportModal from '../../components/ReportModal';
 import ResultsList from '../../components/ResultsList';
+import ShiftLeadCard from '../../components/ShiftLeadCard';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function todayStr() {
@@ -16,6 +17,7 @@ function todayStr() {
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   const [stats, setStats] = useState({ total: 0, faults: 0, meters: 0 });
@@ -23,16 +25,16 @@ export default function DashboardPage() {
   const [resetCountdown, setResetCountdown] = useState('--:--:--');
   const [resetPct, setResetPct] = useState(0);
 
-  const [modalType, setModalType] = useState(null);
+  const [modalType, setModalType] = useState(null); // 'faults' | 'meters' | 'daily' | null
 
   const [period, setPeriod] = useState('daily');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [type, setType] = useState('all');
   const [area, setArea] = useState('all');
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(null); // null = not searched yet
 
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState(null); // { text, error }
   const [theme, setTheme] = useState('light');
 
   useEffect(() => {
@@ -48,11 +50,13 @@ export default function DashboardPage() {
     setTimeout(() => setToast(null), 7000);
   }, []);
 
+  // auth guard
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) { router.replace('/login'); return; }
       setUser(data.session.user);
       setCheckingAuth(false);
+      checkIsAdmin(data.session.user.id).then(setIsAdmin);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session) router.replace('/login');
@@ -71,6 +75,7 @@ export default function DashboardPage() {
     if (!checkingAuth) refreshStats();
   }, [checkingAuth, refreshStats]);
 
+  // clock + reset countdown
   useEffect(() => {
     const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     function tick() {
@@ -159,6 +164,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <ShiftLeadCard />
+
       <div className="card" style={{ padding: '10px 14px', marginBottom: 22, display: 'flex', alignItems: 'center', gap: 12 }}>
         <div style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
           تتصفر عند منتصف الليل خلال <b className="mono" style={{ color: 'var(--text)' }}>{resetCountdown}</b>
@@ -171,15 +178,15 @@ export default function DashboardPage() {
       <div className="card" style={{ marginBottom: 14 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>تقرير جديد</h2>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={() => setModalType('faults')} style={btnCardStyle()}>
+          <button onClick={() => setModalType('faults')} style={btnCardStyle('var(--faults)', 'var(--faults-bg)')}>
             <div style={{ fontSize: 22, marginBottom: 6 }}>⚡</div>
             <div style={{ fontSize: 13.5, fontWeight: 700 }}>تقرير عطل</div>
           </button>
-          <button onClick={() => setModalType('meters')} style={btnCardStyle()}>
+          <button onClick={() => setModalType('meters')} style={btnCardStyle('var(--meters)', 'var(--meters-bg)')}>
             <div style={{ fontSize: 22, marginBottom: 6 }}>🔌</div>
             <div style={{ fontSize: 13.5, fontWeight: 700 }}>تقرير عداد محروق</div>
           </button>
-          <button onClick={() => setModalType('daily')} style={btnCardStyle()}>
+          <button onClick={() => setModalType('daily')} style={btnCardStyle('var(--daily)', 'var(--daily-bg)')}>
             <div style={{ fontSize: 22, marginBottom: 6 }}>📋</div>
             <div style={{ fontSize: 13.5, fontWeight: 700 }}>التقارير اليومية</div>
           </button>
@@ -222,7 +229,7 @@ export default function DashboardPage() {
         <button className="btn-primary" onClick={runSearch}>بحث</button>
 
         {results !== null && (
-          <ResultsList results={results} activeType={type} onChanged={() => { runSearch(); refreshStats(); }} showToast={showToast} />
+          <ResultsList results={results} activeType={type} isAdmin={isAdmin} onChanged={() => { runSearch(); refreshStats(); }} showToast={showToast} />
         )}
       </div>
 
@@ -240,10 +247,10 @@ export default function DashboardPage() {
   );
 }
 
-function btnCardStyle() {
+function btnCardStyle(accent, accentBg) {
   return {
     flex: 1, minWidth: 150, padding: '16px 12px', borderRadius: 12, border: '1px solid var(--border)',
     background: 'var(--surface-2)', cursor: 'pointer', textAlign: 'center', color: 'var(--text)',
     fontFamily: 'Cairo, sans-serif',
   };
-    }
+}
