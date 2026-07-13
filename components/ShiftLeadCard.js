@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { SHIFT_TEAM_INFO, SHIFT_PERIODS, getTeamForDate, getCurrentPeriodIndex } from '../lib/constants';
+import { SHIFT_TEAM_INFO, SHIFT_PERIODS, getTeamForDate, getCurrentPeriodIndex, getShiftReferenceDate } from '../lib/constants';
 
 export default function ShiftLeadCard() {
   const [info, setInfo] = useState({ period: SHIFT_PERIODS[0], teamLetter: '—', name: '—', phone: '' });
@@ -10,7 +10,8 @@ export default function ShiftLeadCard() {
       const now = new Date();
       const periodIdx = getCurrentPeriodIndex(now);
       const period = SHIFT_PERIODS[periodIdx];
-      const teamLetter = getTeamForDate(now, periodIdx);
+      const refDate = getShiftReferenceDate(now);
+      const teamLetter = getTeamForDate(refDate, periodIdx);
       const teamInfo = SHIFT_TEAM_INFO[teamLetter] || { name: '—', phone: '' };
       setInfo({ period, teamLetter, name: teamInfo.name, phone: teamInfo.phone });
     }
