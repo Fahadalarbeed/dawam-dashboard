@@ -40,7 +40,11 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
 
   const initial = {};
   if (fields) {
-    fields.forEach((f) => { initial[f.key] = f.type === 'date' ? todayStr() : ''; });
+    fields.forEach((f) => {
+      if (f.type === 'date') initial[f.key] = todayStr();
+      else if (f.type === 'select') initial[f.key] = f.options[0];
+      else initial[f.key] = '';
+    });
   } else {
     initial.reportDate = todayStr();
     initial.periodKey = 'p1';
@@ -122,7 +126,13 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
 
   async function handleShare() {
     if (!saved) return;
-    await sharePdf(saved.blob, saved.filename);
+    const shared = await sharePdf(saved.blob, saved.filename);
+    if (!shared) {
+      setStatus({
+        text: '⚠️ متصفحك ما يدعم المشاركة المباشرة، فتم تنزيل الملف لجهازك بدلاً من ذلك. افتح واتساب يدويًا ← اختر المحادثة ← 📎 إرفاق ← مستند ← اختر الملف من مجلد Downloads.',
+        kind: 'error',
+      });
+    }
   }
 
   return (
