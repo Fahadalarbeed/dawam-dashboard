@@ -167,4 +167,12 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
             <p style={{ fontSize: 13.5 }}>حذف هذا التقرير؟</p>
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button className="btn-primary" style={{ marginTop: 0, background: 'var(--danger)', color: '#fff' }}
-                onClick={() => hand
+                onClick={() => handleDelete(results.find((r) => r.id === confirmId))}>حذف</button>
+              <button className="btn-secondary" style={{ marginTop: 0 }} onClick={() => setConfirmId(null)}>إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
