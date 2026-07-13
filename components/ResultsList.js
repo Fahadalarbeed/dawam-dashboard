@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { downloadReportPdf, deleteReport } from '../lib/reportsApi';
 import { downloadBlob, sharePdf, mergePdfBlobs } from '../lib/pdf';
-import { buildMergedDailyDoc } from '../lib/templates';
+import { buildMergedDailyDoc, buildMergedMetersDoc } from '../lib/templates';
 import { htmlToPdfBlob } from '../lib/pdf';
 import MetricsChart from './MetricsChart';
 
@@ -87,6 +87,26 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
     }
   }
 
+  async function handleMetersSummary() {
+    setBusy(true);
+    try {
+      const meterReports = results.filter((r) => r.type === 'meters');
+      const dataList = meterReports.map((r) => r.data).filter(Boolean);
+      if (dataList.length === 0) { showToast('لا توجد بيانات تفصيلية لعرضها', true); return; }
+      const dates = meterReports.map((r) => r.report_date).sort();
+      const from = dates[0];
+      const to = dates[dates.length - 1];
+      const html = buildMergedMetersDoc(dataList, from, to);
+      const blob = await htmlToPdfBlob(html, 'l');
+      downloadBlob(blob, 'إحصائية_العدادات_المحروقة.pdf');
+      showToast(`تم إنشاء الإحصائية لـ ${dataList.length} تقرير`, false);
+    } catch (e) {
+      showToast('تعذر إنشاء الإحصائية: ' + e.message, true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div style={{ marginTop: 18 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -97,6 +117,9 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
           )}
           {activeType === 'daily' && results.filter((r) => r.type === 'daily').length > 1 && (
             <button className="btn-secondary" style={{ marginTop: 0 }} disabled={busy} onClick={handleMergeDaily}>🧩 دمج التقارير</button>
+          )}
+          {activeType === 'meters' && results.filter((r) => r.type === 'meters').length >= 1 && (
+            <button className="btn-secondary" style={{ marginTop: 0 }} disabled={busy} onClick={handleMetersSummary}>📊 إحصائية العدادات المحروقة</button>
           )}
           {results.length > 0 && (
             <button className="btn-secondary" style={{ marginTop: 0 }} disabled={busy} onClick={handlePrintAll}>🖨️ طباعة الكل</button>
@@ -144,12 +167,4 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
             <p style={{ fontSize: 13.5 }}>حذف هذا التقرير؟</p>
             <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
               <button className="btn-primary" style={{ marginTop: 0, background: 'var(--danger)', color: '#fff' }}
-                onClick={() => handleDelete(results.find((r) => r.id === confirmId))}>حذف</button>
-              <button className="btn-secondary" style={{ marginTop: 0 }} onClick={() => setConfirmId(null)}>إلغاء</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
+                onClick={() => hand
