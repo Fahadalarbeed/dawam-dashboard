@@ -4,6 +4,7 @@ import { downloadReportPdf, deleteReport } from '../lib/reportsApi';
 import { downloadBlob, sharePdf, mergePdfBlobs } from '../lib/pdf';
 import { buildMergedDailyDoc } from '../lib/templates';
 import { htmlToPdfBlob } from '../lib/pdf';
+import MetricsChart from './MetricsChart';
 
 function fmtDate(iso) {
   const d = new Date(iso);
@@ -13,9 +14,10 @@ function fmtDate(iso) {
 
 const badgeLabel = { faults: 'أعطال', meters: 'عدادات', daily: 'يومي' };
 
-export default function ResultsList({ results, activeType, onChanged, showToast }) {
+export default function ResultsList({ results, activeType, isAdmin, onChanged, showToast }) {
   const [confirmId, setConfirmId] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [showChart, setShowChart] = useState(false);
 
   async function handleOpen(r) {
     try {
@@ -29,7 +31,10 @@ export default function ResultsList({ results, activeType, onChanged, showToast 
   async function handleShare(r) {
     try {
       const blob = await downloadReportPdf(r.pdf_path);
-      await sharePdf(blob, (r.display_name || r.id) + '.pdf');
+      const shared = await sharePdf(blob, (r.display_name || r.id) + '.pdf');
+      if (!shared) {
+        showToast('⚠️ متصفحك ما يدعم المشاركة المباشرة، فتم تنزيل الملف بدلاً من ذلك. افتح واتساب يدويًا وأرفقه من مجلد Downloads.', true);
+      }
     } catch (e) {
       showToast('تعذر مشاركة التقرير: ' + e.message, true);
     }
@@ -52,7 +57,7 @@ export default function ResultsList({ results, activeType, onChanged, showToast 
     try {
       const blobs = [];
       for (const r of results) {
-        try { blobs.push(await downloadReportPdf(r.pdf_path)); } catch (e) {}
+        try { blobs.push(await downloadReportPdf(r.pdf_path)); } catch (e) { /* skip missing */ }
       }
       if (blobs.length === 0) { showToast('تعذر إيجاد ملفات التقارير', true); return; }
       const merged = await mergePdfBlobs(blobs);
@@ -87,6 +92,9 @@ export default function ResultsList({ results, activeType, onChanged, showToast 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{results.length} تقرير</span>
         <div style={{ display: 'flex', gap: 6 }}>
+          {activeType === 'daily' && results.filter((r) => r.type === 'daily').length >= 1 && (
+            <button className="btn-secondary" style={{ marginTop: 0 }} onClick={() => setShowChart((v) => !v)}>📊 رسم بياني</button>
+          )}
           {activeType === 'daily' && results.filter((r) => r.type === 'daily').length > 1 && (
             <button className="btn-secondary" style={{ marginTop: 0 }} disabled={busy} onClick={handleMergeDaily}>🧩 دمج التقارير</button>
           )}
@@ -95,6 +103,13 @@ export default function ResultsList({ results, activeType, onChanged, showToast 
           )}
         </div>
       </div>
+
+      {showChart && activeType === 'daily' && (
+        <MetricsChart
+          dataList={results.filter((r) => r.type === 'daily').map((r) => r.data).filter(Boolean)}
+          onClose={() => setShowChart(false)}
+        />
+      )}
 
       {results.length === 0 && (
         <div style={{ textAlign: 'center', padding: '26px 10px', color: 'var(--text-muted)', fontSize: 13 }}>
@@ -116,7 +131,9 @@ export default function ResultsList({ results, activeType, onChanged, showToast 
           </div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
             <button onClick={() => handleShare(r)} title="مشاركة" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 15 }}>📤</button>
-            <button onClick={() => setConfirmId(r.id)} title="حذف" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 15 }}>✕</button>
+            {isAdmin && (
+              <button onClick={() => setConfirmId(r.id)} title="حذف" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 15 }}>✕</button>
+            )}
           </div>
         </div>
       ))}
