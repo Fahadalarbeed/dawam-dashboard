@@ -25,16 +25,20 @@ export default function DashboardPage() {
   const [resetCountdown, setResetCountdown] = useState('--:--:--');
   const [resetPct, setResetPct] = useState(0);
 
-  const [modalType, setModalType] = useState(null); // 'faults' | 'meters' | 'daily' | null
+  const [modalType, setModalType] = useState(null);
 
   const [period, setPeriod] = useState('daily');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [type, setType] = useState('all');
   const [area, setArea] = useState('all');
-  const [results, setResults] = useState(null); // null = not searched yet
+  const [block, setBlock] = useState('');
+  const [street, setStreet] = useState('');
+  const [house, setHouse] = useState('');
+  const [paci, setPaci] = useState('');
+  const [results, setResults] = useState(null);
 
-  const [toast, setToast] = useState(null); // { text, error }
+  const [toast, setToast] = useState(null);
   const [theme, setTheme] = useState('light');
 
   useEffect(() => {
@@ -50,7 +54,6 @@ export default function DashboardPage() {
     setTimeout(() => setToast(null), 7000);
   }, []);
 
-  // auth guard
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) { router.replace('/login'); return; }
@@ -75,7 +78,6 @@ export default function DashboardPage() {
     if (!checkingAuth) refreshStats();
   }, [checkingAuth, refreshStats]);
 
-  // clock + reset countdown
   useEffect(() => {
     const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     function tick() {
@@ -108,7 +110,7 @@ export default function DashboardPage() {
     setResults(null);
     try {
       const { from, to } = dateRangeFor(period);
-      const data = await searchReports({ from, to, type, area });
+      const data = await searchReports({ from, to, type, area, block, street, house, paci });
       setResults(data);
     } catch (e) {
       showToast('تعذر تنفيذ البحث: ' + e.message, true);
@@ -226,6 +228,25 @@ export default function DashboardPage() {
           </select>
         </div>
 
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div className="field">
+            <label>القطعة</label>
+            <input type="text" value={block} onChange={(e) => setBlock(e.target.value)} placeholder="بحث بالقطعة" />
+          </div>
+          <div className="field">
+            <label>الشارع</label>
+            <input type="text" value={street} onChange={(e) => setStreet(e.target.value)} placeholder="بحث بالشارع" />
+          </div>
+          <div className="field">
+            <label>المنزل</label>
+            <input type="text" value={house} onChange={(e) => setHouse(e.target.value)} placeholder="بحث بالمنزل" />
+          </div>
+          <div className="field">
+            <label>الرقم الآلي (PACI)</label>
+            <input type="text" value={paci} onChange={(e) => setPaci(e.target.value)} placeholder="بحث بالرقم الآلي" />
+          </div>
+        </div>
+
         <button className="btn-primary" onClick={runSearch}>بحث</button>
 
         {results !== null && (
@@ -253,4 +274,4 @@ function btnCardStyle(accent, accentBg) {
     background: 'var(--surface-2)', cursor: 'pointer', textAlign: 'center', color: 'var(--text)',
     fontFamily: 'Cairo, sans-serif',
   };
-}
+  }
