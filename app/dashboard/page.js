@@ -100,6 +100,7 @@ export default function DashboardPage() {
   function dateRangeFor(p) {
     const now = new Date();
     const end = todayStr();
+    if (p === 'all') return { from: '2000-01-01', to: end };
     if (p === 'daily') return { from: end, to: end };
     if (p === 'weekly') {
       const start = new Date(now); start.setDate(start.getDate() - 6);
@@ -217,7 +218,7 @@ export default function DashboardPage() {
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>البحث في التقارير</h2>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {[['daily', 'يومي'], ['weekly', 'اسبوعي'], ['custom', 'مخصص']].map(([val, label]) => (
+          {[['all', 'الكل'], ['daily', 'يومي'], ['weekly', 'اسبوعي'], ['custom', 'مخصص']].map(([val, label]) => (
             <button key={val} className={`chip ${period === val ? 'active' : ''}`} onClick={() => setPeriod(val)}>{label}</button>
           ))}
         </div>
@@ -292,4 +293,4 @@ function btnCardStyle(accent, accentBg) {
     background: 'var(--surface-2)', cursor: 'pointer', textAlign: 'center', color: 'var(--text)',
     fontFamily: 'Cairo, sans-serif',
   };
-                   }
+}
