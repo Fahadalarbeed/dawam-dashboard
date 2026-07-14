@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { downloadReportPdf, deleteReport } from '../lib/reportsApi';
 import { downloadBlob, sharePdf, mergePdfBlobs } from '../lib/pdf';
-import { buildMergedDailyDoc, buildMergedMetersDoc } from '../lib/templates';
+import { buildMergedDailyDoc, buildMergedMetersDoc, buildMergedFaultsDoc } from '../lib/templates';
 import { htmlToPdfBlob } from '../lib/pdf';
 import MetricsChart from './MetricsChart';
 
@@ -107,6 +107,26 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
     }
   }
 
+  async function handleFaultsSummary() {
+    setBusy(true);
+    try {
+      const faultReports = results.filter((r) => r.type === 'faults');
+      const dataList = faultReports.map((r) => r.data).filter(Boolean);
+      if (dataList.length === 0) { showToast('لا توجد بيانات تفصيلية لعرضها', true); return; }
+      const dates = faultReports.map((r) => r.report_date).sort();
+      const from = dates[0];
+      const to = dates[dates.length - 1];
+      const html = buildMergedFaultsDoc(dataList, from, to);
+      const blob = await htmlToPdfBlob(html, 'l');
+      downloadBlob(blob, 'إحصائية_تقارير_الأعطال.pdf');
+      showToast(`تم إنشاء الإحصائية لـ ${dataList.length} تقرير`, false);
+    } catch (e) {
+      showToast('تعذر إنشاء الإحصائية: ' + e.message, true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div style={{ marginTop: 18 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -120,6 +140,9 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
           )}
           {activeType === 'meters' && results.filter((r) => r.type === 'meters').length >= 1 && (
             <button className="btn-secondary" style={{ marginTop: 0 }} disabled={busy} onClick={handleMetersSummary}>📊 إحصائية العدادات المحروقة</button>
+          )}
+          {activeType === 'faults' && results.filter((r) => r.type === 'faults').length >= 1 && (
+            <button className="btn-secondary" style={{ marginTop: 0 }} disabled={busy} onClick={handleFaultsSummary}>📊 إحصائية تقارير الأعطال</button>
           )}
           {results.length > 0 && (
             <button className="btn-secondary" style={{ marginTop: 0 }} disabled={busy} onClick={handlePrintAll}>🖨️ طباعة الكل</button>
