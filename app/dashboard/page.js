@@ -37,6 +37,7 @@ export default function DashboardPage() {
   const [house, setHouse] = useState('');
   const [paci, setPaci] = useState('');
   const [results, setResults] = useState(null); // null = not searched yet
+  const [periodStats, setPeriodStats] = useState(null);
 
   const [toast, setToast] = useState(null); // { text, error }
   const [theme, setTheme] = useState('light');
@@ -109,16 +110,32 @@ export default function DashboardPage() {
     return { from: dateFrom || end, to: dateTo || end };
   }
 
-  async function runSearch() {
+  async function runSearch(overridePeriod, overrideType) {
+    const p = overridePeriod || period;
+    const t = overrideType || type;
     setResults(null);
     try {
-      const { from, to } = dateRangeFor(period);
-      const data = await searchReports({ from, to, type, area, block, street, house, paci });
+      const { from, to } = dateRangeFor(p);
+      const dateFiltered = await searchReports({ from, to, type: 'all' });
+      setPeriodStats({
+        all: dateFiltered.length,
+        faults: dateFiltered.filter((r) => r.type === 'faults').length,
+        meters: dateFiltered.filter((r) => r.type === 'meters').length,
+        daily: dateFiltered.filter((r) => r.type === 'daily').length,
+      });
+      const data = await searchReports({ from, to, type: t, area, block, street, house, paci });
       setResults(data);
     } catch (e) {
       showToast('تعذر تنفيذ البحث: ' + e.message, true);
       setResults([]);
     }
+  }
+
+  function jumpToSearch(filterType) {
+    setPeriod('daily');
+    setType(filterType);
+    document.getElementById('search-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    runSearch('daily', filterType);
   }
 
   async function handleSignOut() {
@@ -152,20 +169,20 @@ export default function DashboardPage() {
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
-        <div className="card" style={{ borderColor: 'rgba(79,190,141,0.35)' }}>
+        <div className="card" style={{ borderColor: 'rgba(79,190,141,0.35)', cursor: 'pointer' }} onClick={() => jumpToSearch('all')}>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, fontWeight: 600 }}>عدد المعاملات</div>
           <div className="mono" style={{ fontSize: 34, fontWeight: 800, color: 'var(--transactions)' }}>{stats.total}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>إجمالي التقارير اليوم</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>إجمالي التقارير اليوم — اضغط للعرض</div>
         </div>
-        <div className="card" style={{ borderColor: 'rgba(232,163,61,0.35)' }}>
+        <div className="card" style={{ borderColor: 'rgba(232,163,61,0.35)', cursor: 'pointer' }} onClick={() => jumpToSearch('faults')}>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, fontWeight: 600 }}>الأعطال اليومية</div>
           <div className="mono" style={{ fontSize: 34, fontWeight: 800, color: 'var(--faults)' }}>{stats.faults}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>تقارير الأعطال اليوم</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>تقارير الأعطال اليوم — اضغط للعرض</div>
         </div>
-        <div className="card" style={{ borderColor: 'rgba(63,182,216,0.35)' }}>
+        <div className="card" style={{ borderColor: 'rgba(63,182,216,0.35)', cursor: 'pointer' }} onClick={() => jumpToSearch('meters')}>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, fontWeight: 600 }}>عداد محروق</div>
           <div className="mono" style={{ fontSize: 34, fontWeight: 800, color: 'var(--meters)' }}>{stats.meters}</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>تقارير العدادات اليوم</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>تقارير العدادات اليوم — اضغط للعرض</div>
         </div>
       </div>
 
@@ -214,8 +231,19 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="card">
+      <div className="card" id="search-panel">
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>البحث في التقارير</h2>
+
+        {periodStats && (
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
+            {[['all', 'الإجمالي', 'var(--transactions)'], ['faults', 'الأعطال', 'var(--faults)'], ['meters', 'العدادات', 'var(--meters)'], ['daily', 'التقارير اليومية', 'var(--daily)']].map(([key, label, color]) => (
+              <div key={key} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 14px', textAlign: 'center', minWidth: 80 }}>
+                <div className="mono" style={{ fontSize: 20, fontWeight: 800, color }}>{periodStats[key]}</div>
+                <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2 }}>{label}</div>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {[['all', 'الكل'], ['daily', 'يومي'], ['weekly', 'اسبوعي'], ['custom', 'مخصص']].map(([val, label]) => (
@@ -266,7 +294,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <button className="btn-primary" onClick={runSearch}>بحث</button>
+        <button className="btn-primary" onClick={() => runSearch()}>بحث</button>
 
         {results !== null && (
           <ResultsList results={results} activeType={type} isAdmin={isAdmin} onChanged={() => { runSearch(); refreshStats(); }} showToast={showToast} />
