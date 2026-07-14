@@ -25,7 +25,7 @@ export default function DashboardPage() {
   const [resetCountdown, setResetCountdown] = useState('--:--:--');
   const [resetPct, setResetPct] = useState(0);
 
-  const [modalType, setModalType] = useState(null);
+  const [modalType, setModalType] = useState(null); // 'faults' | 'meters' | 'daily' | null
 
   const [period, setPeriod] = useState('daily');
   const [dateFrom, setDateFrom] = useState('');
@@ -36,9 +36,9 @@ export default function DashboardPage() {
   const [street, setStreet] = useState('');
   const [house, setHouse] = useState('');
   const [paci, setPaci] = useState('');
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(null); // null = not searched yet
 
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState(null); // { text, error }
   const [theme, setTheme] = useState('light');
 
   useEffect(() => {
@@ -54,6 +54,7 @@ export default function DashboardPage() {
     setTimeout(() => setToast(null), 7000);
   }, []);
 
+  // auth guard
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) { router.replace('/login'); return; }
@@ -78,6 +79,7 @@ export default function DashboardPage() {
     if (!checkingAuth) refreshStats();
   }, [checkingAuth, refreshStats]);
 
+  // clock + reset countdown
   useEffect(() => {
     const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     function tick() {
@@ -185,7 +187,23 @@ export default function DashboardPage() {
             <div style={{ fontSize: 13.5, fontWeight: 700 }}>تقرير عطل</div>
           </button>
           <button onClick={() => setModalType('meters')} style={btnCardStyle('var(--meters)', 'var(--meters-bg)')}>
-            <div style={{ fontSize: 22, marginBottom: 6 }}>🔌</div>
+            <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'center' }}>
+              <svg width="26" height="26" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="6" y="12" width="52" height="38" rx="9" fill="#F2F2F2" />
+                <rect x="6" y="12" width="52" height="38" rx="9" stroke="#111111" strokeWidth="2.5" fill="none" />
+                <rect x="13" y="18" width="38" height="13" rx="2.5" fill="#111111" />
+                <text x="32" y="27.7" textAnchor="middle" fontSize="8.5" fontFamily="'Courier New',monospace" fontWeight="bold" fill="#5CE87A">04821</text>
+                <circle cx="19.5" cy="40.5" r="4.3" fill="#fff" stroke="#111111" strokeWidth="2" />
+                <circle cx="32" cy="40.5" r="4.3" fill="#fff" stroke="#111111" strokeWidth="2" />
+                <circle cx="44.5" cy="40.5" r="4.3" fill="#fff" stroke="#111111" strokeWidth="2" />
+                <line x1="19.5" y1="40.5" x2="19.5" y2="37.7" stroke="#111111" strokeWidth="1.3" strokeLinecap="round" />
+                <line x1="32" y1="40.5" x2="33.8" y2="38.6" stroke="#111111" strokeWidth="1.3" strokeLinecap="round" />
+                <line x1="44.5" y1="40.5" x2="44.5" y2="37.7" stroke="#111111" strokeWidth="1.3" strokeLinecap="round" />
+                <rect x="24" y="6" width="16" height="7" rx="2.5" fill="#111111" />
+                <circle cx="50" cy="14" r="10" fill="#FBBF24" stroke="#F2F2F2" strokeWidth="2.5" />
+                <path d="M51.8 8 L46.5 15.5 L49.7 15.5 L48 20.5 L53.5 13 L50.2 13 Z" fill="#111111" />
+              </svg>
+            </div>
             <div style={{ fontSize: 13.5, fontWeight: 700 }}>تقرير عداد محروق</div>
           </button>
           <button onClick={() => setModalType('daily')} style={btnCardStyle('var(--daily)', 'var(--daily-bg)')}>
@@ -274,4 +292,4 @@ function btnCardStyle(accent, accentBg) {
     background: 'var(--surface-2)', cursor: 'pointer', textAlign: 'center', color: 'var(--text)',
     fontFamily: 'Cairo, sans-serif',
   };
-  }
+                   }
