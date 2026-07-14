@@ -170,17 +170,17 @@ export default function DashboardPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
         <div className="card" style={{ borderColor: 'rgba(79,190,141,0.35)', cursor: 'pointer' }} onClick={() => jumpToSearch('all')}>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, fontWeight: 600 }}>عدد المعاملات</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, fontWeight: 600, minHeight: 34, display: 'flex', alignItems: 'center' }}>عدد المعاملات</div>
           <div className="mono" style={{ fontSize: 34, fontWeight: 800, color: 'var(--transactions)' }}>{stats.total}</div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>إجمالي التقارير اليوم — اضغط للعرض</div>
         </div>
         <div className="card" style={{ borderColor: 'rgba(232,163,61,0.35)', cursor: 'pointer' }} onClick={() => jumpToSearch('faults')}>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, fontWeight: 600 }}>الأعطال اليومية</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, fontWeight: 600, minHeight: 34, display: 'flex', alignItems: 'center' }}>الأعطال اليومية</div>
           <div className="mono" style={{ fontSize: 34, fontWeight: 800, color: 'var(--faults)' }}>{stats.faults}</div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>تقارير الأعطال اليوم — اضغط للعرض</div>
         </div>
         <div className="card" style={{ borderColor: 'rgba(63,182,216,0.35)', cursor: 'pointer' }} onClick={() => jumpToSearch('meters')}>
-          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, fontWeight: 600 }}>عداد محروق</div>
+          <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, fontWeight: 600, minHeight: 34, display: 'flex', alignItems: 'center' }}>عداد محروق</div>
           <div className="mono" style={{ fontSize: 34, fontWeight: 800, color: 'var(--meters)' }}>{stats.meters}</div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>تقارير العدادات اليوم — اضغط للعرض</div>
         </div>
@@ -235,11 +235,11 @@ export default function DashboardPage() {
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>البحث في التقارير</h2>
 
         {periodStats && (
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
-            {[['all', 'الإجمالي', 'var(--transactions)'], ['faults', 'الأعطال', 'var(--faults)'], ['meters', 'العدادات', 'var(--meters)'], ['daily', 'التقارير اليومية', 'var(--daily)']].map(([key, label, color]) => (
-              <div key={key} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 14px', textAlign: 'center', minWidth: 80 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'nowrap', marginBottom: 14 }}>
+            {[['all', 'الإجمالي', 'var(--transactions)'], ['faults', 'الأعطال', 'var(--faults)'], ['meters', 'العدادات', 'var(--meters)']].map(([key, label, color]) => (
+              <div key={key} style={{ flex: '1 1 0', minWidth: 0, background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 6px', textAlign: 'center' }}>
                 <div className="mono" style={{ fontSize: 20, fontWeight: 800, color }}>{periodStats[key]}</div>
-                <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 2 }}>{label}</div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
               </div>
             ))}
           </div>
