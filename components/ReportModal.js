@@ -151,12 +151,16 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
         </div>
 
         <div style={{ maxHeight: '65vh', overflowY: 'auto', paddingLeft: 4 }}>
-          {fields && fields.map((f) => (
-            <div className="field" key={f.key}>
-              <label>{f.label}</label>
-              <FieldInput field={f} value={data[f.key]} onChange={(v) => setField(f.key, v)} />
+          {fields && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {fields.map((f) => (
+                <div className="field" key={f.key} style={{ marginTop: 8, gridColumn: f.type === 'textarea' ? '1 / -1' : 'auto' }}>
+                  <label style={{ fontSize: 10.5 }}>{f.label}</label>
+                  <FieldInput field={f} value={data[f.key]} onChange={(v) => setField(f.key, v)} />
+                </div>
+              ))}
             </div>
-          ))}
+          )}
 
           {type === 'complaints' && data.action === 'أخرى' && (
             <div className="field">
