@@ -200,6 +200,10 @@ export default function DashboardPage() {
       <div className="card" style={{ marginBottom: 14 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>تقرير جديد</h2>
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button onClick={() => setModalType('complaints')} style={btnCardStyle('var(--complaints)', 'var(--complaints-bg)')}>
+            <div style={{ fontSize: 22, marginBottom: 6 }}>📝</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>إنشاء بلاغ جديد</div>
+          </button>
           <button onClick={() => setModalType('faults')} style={btnCardStyle('var(--faults)', 'var(--faults-bg)')}>
             <div style={{ fontSize: 22, marginBottom: 6 }}>⚡</div>
             <div style={{ fontSize: 13.5, fontWeight: 700 }}>تقرير عطل</div>
@@ -229,6 +233,15 @@ export default function DashboardPage() {
             <div style={{ fontSize: 13.5, fontWeight: 700 }}>التقارير اليومية</div>
           </button>
         </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>البلاغات</h2>
+        <button onClick={() => router.push('/complaints')} style={{ ...btnCardStyle('var(--complaints)', 'var(--complaints-bg)'), width: '100%' }}>
+          <div style={{ fontSize: 22, marginBottom: 6 }}>📊</div>
+          <div style={{ fontSize: 13.5, fontWeight: 700 }}>إحصائية البلاغات</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>الفلاتر والإحصائيات التفصيلية</div>
+        </button>
       </div>
 
       <div className="card" id="search-panel">
