@@ -1,9 +1,9 @@
 'use client';
 import { useState } from 'react';
 import {
-  FAULT_FIELDS, METER_FIELDS, DAILY_PERIODS, DAILY_METRICS,
+  FAULT_FIELDS, METER_FIELDS, COMPLAINT_FIELDS, DAILY_PERIODS, DAILY_METRICS,
 } from '../lib/constants';
-import { buildFaultDoc, buildMeterDoc, buildDailyDoc } from '../lib/templates';
+import { buildFaultDoc, buildMeterDoc, buildDailyDoc, buildComplaintDoc } from '../lib/templates';
 import { htmlToPdfBlob, sharePdf } from '../lib/pdf';
 import { uploadReportPdf, insertReport } from '../lib/reportsApi';
 
@@ -36,7 +36,7 @@ function FieldInput({ field, value, onChange }) {
 }
 
 export default function ReportModal({ type, currentUser, onClose, onSaved }) {
-  const fields = type === 'faults' ? FAULT_FIELDS : type === 'meters' ? METER_FIELDS : null;
+  const fields = type === 'faults' ? FAULT_FIELDS : type === 'meters' ? METER_FIELDS : type === 'complaints' ? COMPLAINT_FIELDS : null;
 
   const initial = {};
   if (fields) {
@@ -45,6 +45,7 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
       else if (f.type === 'select') initial[f.key] = f.options[0];
       else initial[f.key] = '';
     });
+    if (type === 'complaints') initial.otherAction = '';
   } else {
     initial.reportDate = todayStr();
     initial.periodKey = 'p1';
@@ -57,7 +58,7 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
   const [data, setData] = useState(initial);
   const [status, setStatus] = useState({ text: '', kind: '' });
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(null);
+  const [saved, setSaved] = useState(null); // { blob, filename }
 
   function setField(key, value) {
     setData((d) => ({ ...d, [key]: value }));
@@ -66,7 +67,7 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
     setData((d) => ({ ...d, metrics: { ...d.metrics, [key]: parseInt(value, 10) || 0 } }));
   }
 
-  const title = type === 'faults' ? 'تقرير عطل' : type === 'meters' ? 'تقرير عداد محروق' : 'التقارير اليومية';
+  const title = type === 'faults' ? 'تقرير عطل' : type === 'meters' ? 'تقرير عداد محروق' : type === 'complaints' ? 'بلاغ جديد' : 'التقارير اليومية';
 
   async function handleSave() {
     setSaving(true);
@@ -83,6 +84,12 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
         html = buildMeterDoc(data);
         displayName = `عداد محروق - ${data.area || 'بدون منطقة'} - ${data.meterNo || ''}`.trim();
         filenamePrefix = 'تقرير_عداد_محروق_';
+        area = data.area || null;
+      } else if (type === 'complaints') {
+        const actionText = data.action === 'أخرى' ? (data.otherAction || 'أخرى') : data.action;
+        html = buildComplaintDoc(data);
+        displayName = `بلاغ - ${data.area || 'بدون منطقة'} - ${actionText || ''}`.trim();
+        filenamePrefix = 'بلاغ_';
         area = data.area || null;
       } else {
         const period = DAILY_PERIODS.find((p) => p.key === data.periodKey);
@@ -108,7 +115,7 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
         data: type === 'daily' ? { ...data, periodLabel: DAILY_PERIODS.find((p) => p.key === data.periodKey).label } : data,
         pdf_path: pdfPath,
         display_name: displayName,
-        prepared_by: type === 'faults' ? data.employeeName : data.preparedBy,
+        prepared_by: type === 'faults' ? data.employeeName : (type === 'complaints' ? (currentUser?.email || '') : data.preparedBy),
         created_by: currentUser?.id || null,
         created_by_email: currentUser?.email || null,
       });
@@ -150,6 +157,13 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
               <FieldInput field={f} value={data[f.key]} onChange={(v) => setField(f.key, v)} />
             </div>
           ))}
+
+          {type === 'complaints' && data.action === 'أخرى' && (
+            <div className="field">
+              <label>حدد نوع الإجراء</label>
+              <input type="text" value={data.otherAction} onChange={(e) => setField('otherAction', e.target.value)} placeholder="اكتب نوع الإجراء" />
+            </div>
+          )}
 
           {!fields && (
             <>
@@ -198,11 +212,14 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
           </div>
         )}
 
-        {saved && (
+        {saved && type !== 'complaints' && (
           <>
             <button className="btn-whatsapp" onClick={handleShare}>مشاركة عبر واتساب 📄</button>
             <button className="btn-secondary" style={{ width: '100%' }} onClick={onClose}>تم</button>
           </>
+        )}
+        {saved && type === 'complaints' && (
+          <button className="btn-secondary" style={{ width: '100%' }} onClick={onClose}>تم</button>
         )}
       </div>
     </div>
