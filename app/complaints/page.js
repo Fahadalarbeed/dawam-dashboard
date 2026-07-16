@@ -6,7 +6,7 @@ import { AREA_LIST } from '../../lib/constants';
 import { searchReports, deleteReport, checkIsAdmin } from '../../lib/reportsApi';
 import { buildRepeatedComplaintsDoc, buildRepeatedStationsDoc, buildMetricsFilterDoc, buildMergedComplaintsDoc } from '../../lib/templates';
 import { htmlToPdfBlob, downloadBlob, sharePdf } from '../../lib/pdf';
-imporimport SimpleBarChart from '../../lib/components/SimpleBarChart';
+import SimpleBarChart from '../../lib/components/SimpleBarChart';
 
 function fmtDate(iso) {
   if (!iso) return '';
