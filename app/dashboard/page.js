@@ -25,7 +25,7 @@ export default function DashboardPage() {
   const [resetCountdown, setResetCountdown] = useState('--:--:--');
   const [resetPct, setResetPct] = useState(0);
 
-  const [modalType, setModalType] = useState(null); // 'faults' | 'meters' | 'daily' | null
+  const [modalType, setModalType] = useState(null);
 
   const [period, setPeriod] = useState('daily');
   const [dateFrom, setDateFrom] = useState('');
@@ -37,10 +37,10 @@ export default function DashboardPage() {
   const [building, setBuilding] = useState('');
   const [house, setHouse] = useState('');
   const [paci, setPaci] = useState('');
-  const [results, setResults] = useState(null); // null = not searched yet
+  const [results, setResults] = useState(null);
   const [periodStats, setPeriodStats] = useState(null);
 
-  const [toast, setToast] = useState(null); // { text, error }
+  const [toast, setToast] = useState(null);
   const [theme, setTheme] = useState('light');
 
   useEffect(() => {
@@ -56,7 +56,6 @@ export default function DashboardPage() {
     setTimeout(() => setToast(null), 7000);
   }, []);
 
-  // auth guard
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) { router.replace('/login'); return; }
@@ -81,7 +80,6 @@ export default function DashboardPage() {
     if (!checkingAuth) refreshStats();
   }, [checkingAuth, refreshStats]);
 
-  // clock + reset countdown
   useEffect(() => {
     const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     function tick() {
