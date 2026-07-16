@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const [area, setArea] = useState('all');
   const [block, setBlock] = useState('');
   const [street, setStreet] = useState('');
+  const [building, setBuilding] = useState('');
   const [house, setHouse] = useState('');
   const [paci, setPaci] = useState('');
   const [results, setResults] = useState(null); // null = not searched yet
@@ -123,7 +124,7 @@ export default function DashboardPage() {
         meters: dateFiltered.filter((r) => r.type === 'meters').length,
         daily: dateFiltered.filter((r) => r.type === 'daily').length,
       });
-      const data = await searchReports({ from, to, type: t, area, block, street, house, paci });
+      const data = await searchReports({ from, to, type: t, area, block, street, building, house, paci });
       setResults(data);
     } catch (e) {
       showToast('تعذر تنفيذ البحث: ' + e.message, true);
@@ -296,6 +297,10 @@ export default function DashboardPage() {
           <div className="field">
             <label>الشارع</label>
             <input type="text" value={street} onChange={(e) => setStreet(e.target.value)} placeholder="بحث بالشارع" />
+          </div>
+          <div className="field">
+            <label>القسيمة</label>
+            <input type="text" value={building} onChange={(e) => setBuilding(e.target.value)} placeholder="بحث بالقسيمة" />
           </div>
           <div className="field">
             <label>المنزل</label>
