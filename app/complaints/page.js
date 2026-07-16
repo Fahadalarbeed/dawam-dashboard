@@ -6,7 +6,7 @@ import { AREA_LIST } from '../../lib/constants';
 import { searchReports, deleteReport, checkIsAdmin } from '../../lib/reportsApi';
 import { buildRepeatedComplaintsDoc, buildRepeatedStationsDoc, buildMetricsFilterDoc, buildMergedComplaintsDoc } from '../../lib/templates';
 import { htmlToPdfBlob, downloadBlob, sharePdf } from '../../lib/pdf';
-import SimpleBarChart from '../../lib/components/SimpleBarChart';
+import SimpleBarChart from '../../components/SimpleBarChart';
 
 function fmtDate(iso) {
   if (!iso) return '';
@@ -119,9 +119,11 @@ export default function ComplaintsPage() {
       const { from, to } = dateRangeFor(p, cf, ct);
       const data = await searchReports({ from, to, type: 'complaints' });
       setComplaints(data);
+      return data;
     } catch (e) {
       console.error(e);
       setComplaints([]);
+      return [];
     }
   }, []);
 
@@ -132,10 +134,6 @@ export default function ComplaintsPage() {
   function applyPeriod(p) {
     setPeriod(p);
     if (p !== 'custom') loadComplaints(p, customFrom, customTo);
-  }
-  function applyCustomAndFilters() {
-    loadComplaints('custom', customFrom, customTo);
-    // metrics re-applied by user via its own button after data refreshes
   }
 
   async function handleDelete(r) {
@@ -224,16 +222,26 @@ export default function ComplaintsPage() {
     setSelectedMetricsAreas((prev) => prev.filter((a) => a !== area));
   }
 
-  function applyMetricsFilter() {
+  function applyMetricsFilter(sourceData) {
+    const data = sourceData || complaints || [];
     if (selectedMetricsAreas.length === 0) { setMetricsResult(null); return; }
     const { from, to } = dateRangeFor(period, customFrom, customTo);
     const filteredByArea = selectedMetricsAreas.map((area) => {
-      const rows = (complaints || []).filter((r) => r.data?.area === area && r.report_date >= from && r.report_date <= to);
+      const rows = data.filter((r) => r.data?.area === area && r.report_date >= from && r.report_date <= to);
       const counts = METRIC_DEFS.map((m) => rows.filter((r) => m.match(r.data?.action)).length);
       return { area, counts };
     });
     const totals = METRIC_DEFS.map((m, i) => filteredByArea.reduce((sum, r) => sum + r.counts[i], 0));
     setMetricsResult({ filteredByArea, totals, from, to });
+  }
+
+  async function handleApplyClick() {
+    if (period === 'custom') {
+      const freshData = await loadComplaints('custom', customFrom, customTo);
+      applyMetricsFilter(freshData);
+    } else {
+      applyMetricsFilter();
+    }
   }
 
   async function exportRepeated() {
@@ -532,20 +540,33 @@ export default function ComplaintsPage() {
           </div>
         </div>
 
-        <button className="btn-primary" onClick={() => { if (period === 'custom') applyCustomAndFilters(); applyMetricsFilter(); }}>تطبيق</button>
+        <button className="btn-primary" onClick={handleApplyClick}>تطبيق</button>
 
         {metricsResult && (
           <div style={{ marginTop: 14 }}>
             <div style={{ overflowX: 'auto' }}>
-              <table className="daily-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10.5 }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10.5 }}>
                 <thead>
-                  <tr><th className="period-col">المنطقة</th>{METRIC_DEFS.map((m) => <th key={m.key}>{m.label}</th>)}</tr>
+                  <tr>
+                    <th style={{ border: '1px solid var(--border)', padding: '6px 8px', background: 'var(--surface-2)', textAlign: 'right', whiteSpace: 'nowrap' }}>المنطقة</th>
+                    {METRIC_DEFS.map((m) => (
+                      <th key={m.key} style={{ border: '1px solid var(--border)', padding: '6px 8px', background: 'var(--surface-2)' }}>{m.label}</th>
+                    ))}
+                  </tr>
                 </thead>
                 <tbody>
                   {metricsResult.filteredByArea.map((r) => (
-                    <tr key={r.area}><td className="period-col">{r.area}</td>{r.counts.map((c, i) => <td key={i}>{c}</td>)}</tr>
+                    <tr key={r.area}>
+                      <td style={{ border: '1px solid var(--border)', padding: '6px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>{r.area}</td>
+                      {r.counts.map((c, i) => <td key={i} style={{ border: '1px solid var(--border)', padding: '6px 8px', textAlign: 'center' }}>{c}</td>)}
+                    </tr>
                   ))}
-                  <tr className="total-row"><th className="period-col">الإجمالي</th>{metricsResult.totals.map((t, i) => <th key={i}>{t}</th>)}</tr>
+                  <tr>
+                    <th style={{ border: '1px solid var(--border)', padding: '6px 8px', background: 'var(--surface-2)', textAlign: 'right', whiteSpace: 'nowrap' }}>الإجمالي</th>
+                    {metricsResult.totals.map((t, i) => (
+                      <th key={i} style={{ border: '1px solid var(--border)', padding: '6px 8px', background: 'var(--surface-2)' }}>{t}</th>
+                    ))}
+                  </tr>
                 </tbody>
               </table>
             </div>
