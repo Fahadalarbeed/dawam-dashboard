@@ -39,7 +39,7 @@ const FIELD_LABELS = [
   ['building', 'القسيمة'],
   ['house', 'المنزل'],
   ['paci', 'الرقم الآلي (PACI)'],
-  ['station', 'المحول أو UDS'],
+  ['station', 'المحطة أو UDS'],
   ['unitNo', 'اليونت'],
   ['phone', 'رقم الهاتف'],
 ];
@@ -91,6 +91,8 @@ export default function ComplaintsPage() {
   const [exportingStationRepeated, setExportingStationRepeated] = useState(false);
 
   const [selectedMetricsAreas, setSelectedMetricsAreas] = useState([]);
+  const [selectedExtremeArea, setSelectedExtremeArea] = useState(null);
+  const [exportingExtreme, setExportingExtreme] = useState(false);
   const [metricsResult, setMetricsResult] = useState(null);
   const [exportingMetrics, setExportingMetrics] = useState(false);
 
@@ -203,9 +205,17 @@ export default function ComplaintsPage() {
     });
     return Object.entries(groups)
       .filter(([, items]) => items.length > 1)
-      .map(([station, items]) => ({ station, count: items.length, items }))
+      .map(([station, items]) => {
+        const areas = [...new Set(items.map((d) => d.area).filter(Boolean))];
+        return { station, count: items.length, items, areas };
+      })
       .sort((a, b) => b.count - a.count);
   }, [complaints]);
+
+  const extremeAreaComplaints = useMemo(() => {
+    if (!complaints || !selectedExtremeArea) return [];
+    return complaints.filter((r) => (r.data?.area || 'بدون منطقة') === selectedExtremeArea);
+  }, [complaints, selectedExtremeArea]);
 
   const availableAreas = useMemo(() => {
     if (!complaints) return [];
@@ -271,6 +281,22 @@ export default function ComplaintsPage() {
       alert('تعذر إنشاء الملف: ' + e.message);
     } finally {
       setExportingStationRepeated(false);
+    }
+  }
+
+  async function exportExtremeArea() {
+    if (!selectedExtremeArea || extremeAreaComplaints.length === 0) return;
+    setExportingExtreme(true);
+    try {
+      const { from, to } = dateRangeFor(period, customFrom, customTo);
+      const html = buildMergedComplaintsDoc(extremeAreaComplaints.map((r) => r.data), from, to);
+      const blob = await htmlToPdfBlob(html, 'l');
+      const shared = await sharePdf(blob, `بلاغات_${selectedExtremeArea}.pdf`);
+      if (!shared) downloadBlob(blob, `بلاغات_${selectedExtremeArea}.pdf`);
+    } catch (e) {
+      alert('تعذر إنشاء الملف: ' + e.message);
+    } finally {
+      setExportingExtreme(false);
     }
   }
 
@@ -446,7 +472,7 @@ export default function ComplaintsPage() {
                     }}>
                       <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--complaints-bg)', color: 'var(--complaints)', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>محطة/UDS: {entry.station}</div>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>محطة/UDS: {entry.station} {entry.areas.length > 0 ? `— ${entry.areas.join('، ')}` : ''}</div>
                         <div style={{ height: 4, background: 'var(--border)', borderRadius: 3, marginTop: 5, overflow: 'hidden' }}>
                           <div style={{ height: '100%', width: `${pct}%`, background: 'var(--complaints)', borderRadius: 3 }} />
                         </div>
@@ -490,18 +516,70 @@ export default function ComplaintsPage() {
       )}
 
       {areaExtremes && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-          <div className="card" style={{ padding: '12px 10px', textAlign: 'center', borderColor: 'rgba(220,38,38,0.35)' }}>
-            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginBottom: 4 }}>🔺 الأكثر بلاغات</div>
-            <div style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.5 }}>{areaExtremes.mostAreas.join('، ')}</div>
-            <div className="mono" style={{ fontSize: 20, fontWeight: 800, color: 'var(--danger)', marginTop: 4 }}>{areaExtremes.maxCount}</div>
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+            <div className="card" style={{ padding: '12px 10px', textAlign: 'center', borderColor: 'rgba(220,38,38,0.35)' }}>
+              <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginBottom: 4 }}>🔺 الأكثر بلاغات</div>
+              <div style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.5 }}>
+                {areaExtremes.mostAreas.map((a, i) => (
+                  <span key={a}>
+                    <span onClick={() => setSelectedExtremeArea(selectedExtremeArea === a ? null : a)} style={{ cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted' }}>{a}</span>
+                    {i < areaExtremes.mostAreas.length - 1 ? '، ' : ''}
+                  </span>
+                ))}
+              </div>
+              <div className="mono" style={{ fontSize: 20, fontWeight: 800, color: 'var(--danger)', marginTop: 4 }}>{areaExtremes.maxCount}</div>
+            </div>
+            <div className="card" style={{ padding: '12px 10px', textAlign: 'center', borderColor: 'rgba(79,190,141,0.35)' }}>
+              <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginBottom: 4 }}>🔻 الأقل بلاغات</div>
+              <div style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.5 }}>
+                {areaExtremes.leastAreas.map((a, i) => (
+                  <span key={a}>
+                    <span onClick={() => setSelectedExtremeArea(selectedExtremeArea === a ? null : a)} style={{ cursor: 'pointer', textDecoration: 'underline', textDecorationStyle: 'dotted' }}>{a}</span>
+                    {i < areaExtremes.leastAreas.length - 1 ? '، ' : ''}
+                  </span>
+                ))}
+              </div>
+              <div className="mono" style={{ fontSize: 20, fontWeight: 800, color: 'var(--transactions)', marginTop: 4 }}>{areaExtremes.minCount}</div>
+            </div>
           </div>
-          <div className="card" style={{ padding: '12px 10px', textAlign: 'center', borderColor: 'rgba(79,190,141,0.35)' }}>
-            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginBottom: 4 }}>🔻 الأقل بلاغات</div>
-            <div style={{ fontSize: 13.5, fontWeight: 800, lineHeight: 1.5 }}>{areaExtremes.leastAreas.join('، ')}</div>
-            <div className="mono" style={{ fontSize: 20, fontWeight: 800, color: 'var(--transactions)', marginTop: 4 }}>{areaExtremes.minCount}</div>
-          </div>
-        </div>
+
+          {selectedExtremeArea && (
+            <div className="card" style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>بلاغات: {selectedExtremeArea}</h2>
+                <button onClick={() => setSelectedExtremeArea(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 16, cursor: 'pointer' }}>✕</button>
+              </div>
+              {extremeAreaComplaints.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '16px 10px', color: 'var(--text-muted)', fontSize: 12.5 }}>لا توجد بلاغات</div>
+              ) : (
+                <>
+                  {extremeAreaComplaints.map((r) => {
+                    const d = r.data || {};
+                    const actionText = d.action === 'أخرى' ? (d.otherAction || 'أخرى') : d.action;
+                    return (
+                      <div key={r.id} style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', padding: '8px 10px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 8 }}>
+                        {FIELD_LABELS.map(([key, label, format]) => {
+                          const val = format ? format(d[key]) : d[key];
+                          if (!val) return null;
+                          return (
+                            <span key={key} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11, whiteSpace: 'nowrap' }}>
+                              <span style={{ color: 'var(--text-muted)' }}>{label}:</span> <b>{val}</b>
+                            </span>
+                          );
+                        })}
+                        <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 7, padding: '3px 8px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{actionText}</span>
+                      </div>
+                    );
+                  })}
+                  <button className="btn-secondary" style={{ marginTop: 8, width: '100%' }} onClick={exportExtremeArea} disabled={exportingExtreme}>
+                    {exportingExtreme ? 'جارٍ التجهيز...' : '🖨️ تصدير كجدول PDF (طباعة / مشاركة)'}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </>
       )}
 
       <div className="card" style={{ marginBottom: 14 }}>
@@ -703,4 +781,4 @@ export default function ComplaintsPage() {
       )}
     </div>
   );
-   }
+}
