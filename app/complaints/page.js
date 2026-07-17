@@ -83,10 +83,12 @@ export default function ComplaintsPage() {
   const [customTo, setCustomTo] = useState('');
 
   const [showRepeated, setShowRepeated] = useState(false);
+  const [repeatedAreaFilter, setRepeatedAreaFilter] = useState([]);
   const [expandedAddr, setExpandedAddr] = useState(null);
   const [exportingRepeated, setExportingRepeated] = useState(false);
 
   const [showStationRepeated, setShowStationRepeated] = useState(false);
+  const [stationRepeatedAreaFilter, setStationRepeatedAreaFilter] = useState([]);
   const [expandedStation, setExpandedStation] = useState(null);
   const [exportingStationRepeated, setExportingStationRepeated] = useState(false);
 
@@ -182,8 +184,11 @@ export default function ComplaintsPage() {
 
   const repeatedEntries = useMemo(() => {
     if (!complaints) return [];
+    const source = repeatedAreaFilter.length > 0
+      ? complaints.filter((r) => repeatedAreaFilter.includes(r.data?.area))
+      : complaints;
     const groups = {};
-    complaints.forEach((r) => {
+    source.forEach((r) => {
       const key = addressKey(r.data || {});
       if (!groups[key]) groups[key] = [];
       groups[key].push(r.data || {});
@@ -192,12 +197,15 @@ export default function ComplaintsPage() {
       .filter(([, items]) => items.length > 1)
       .map(([address, items]) => ({ address, count: items.length, items }))
       .sort((a, b) => b.count - a.count);
-  }, [complaints]);
+  }, [complaints, repeatedAreaFilter]);
 
   const stationRepeatedEntries = useMemo(() => {
     if (!complaints) return [];
+    const source = stationRepeatedAreaFilter.length > 0
+      ? complaints.filter((r) => stationRepeatedAreaFilter.includes(r.data?.area))
+      : complaints;
     const groups = {};
-    complaints.forEach((r) => {
+    source.forEach((r) => {
       const key = stationKey(r.data || {});
       if (!key) return;
       if (!groups[key]) groups[key] = [];
@@ -210,7 +218,7 @@ export default function ComplaintsPage() {
         return { station, count: items.length, items, areas };
       })
       .sort((a, b) => b.count - a.count);
-  }, [complaints]);
+  }, [complaints, stationRepeatedAreaFilter]);
 
   const extremeAreaComplaints = useMemo(() => {
     if (!complaints || !selectedExtremeArea) return [];
@@ -230,6 +238,19 @@ export default function ComplaintsPage() {
   }
   function removeMetricsArea(area) {
     setSelectedMetricsAreas((prev) => prev.filter((a) => a !== area));
+  }
+
+  function addRepeatedArea(area) {
+    if (area && !repeatedAreaFilter.includes(area)) setRepeatedAreaFilter((prev) => [...prev, area]);
+  }
+  function removeRepeatedArea(area) {
+    setRepeatedAreaFilter((prev) => prev.filter((a) => a !== area));
+  }
+  function addStationRepeatedArea(area) {
+    if (area && !stationRepeatedAreaFilter.includes(area)) setStationRepeatedAreaFilter((prev) => [...prev, area]);
+  }
+  function removeStationRepeatedArea(area) {
+    setStationRepeatedAreaFilter((prev) => prev.filter((a) => a !== area));
   }
 
   function applyMetricsFilter(sourceData) {
@@ -386,8 +407,24 @@ export default function ComplaintsPage() {
 
         {showRepeated && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-            <button className="btn-secondary" style={{ marginTop: 0, width: '100%', marginBottom: 12 }} onClick={exportRepeated} disabled={exportingRepeated}>
-              {exportingRepeated ? 'جارٍ التجهيز...' : '🖨️ تصدير تفاصيل الكل كجدول (طباعة / مشاركة)'}
+            <div className="field" style={{ marginTop: 0 }}>
+              <label>المناطق (اتركه فاضي = الكل، أو حدد مناطق معينة)</label>
+              <select value="" onChange={(e) => addRepeatedArea(e.target.value)}>
+                <option value="">اختر منطقة لإضافتها...</option>
+                {availableAreas.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {repeatedAreaFilter.map((a) => (
+                  <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--transactions-bg)', color: 'var(--transactions)', borderRadius: 8, padding: '4px 8px', fontSize: 12, fontWeight: 600 }}>
+                    {a}
+                    <span onClick={() => removeRepeatedArea(a)} style={{ cursor: 'pointer', fontWeight: 800 }}>✕</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <button className="btn-secondary" style={{ marginTop: 12, width: '100%', marginBottom: 12 }} onClick={exportRepeated} disabled={exportingRepeated}>
+              {exportingRepeated ? 'جارٍ التجهيز...' : `🖨️ تصدير ${repeatedAreaFilter.length > 0 ? 'المناطق المحددة' : 'الكل'} كجدول (طباعة / مشاركة)`}
             </button>
 
             {repeatedEntries.length === 0 ? (
@@ -453,8 +490,24 @@ export default function ComplaintsPage() {
 
         {showStationRepeated && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-            <button className="btn-secondary" style={{ marginTop: 0, width: '100%', marginBottom: 12 }} onClick={exportStationRepeated} disabled={exportingStationRepeated}>
-              {exportingStationRepeated ? 'جارٍ التجهيز...' : '🖨️ تصدير تفاصيل الكل كجدول (طباعة / مشاركة)'}
+            <div className="field" style={{ marginTop: 0 }}>
+              <label>المناطق (اتركه فاضي = الكل، أو حدد مناطق معينة)</label>
+              <select value="" onChange={(e) => addStationRepeatedArea(e.target.value)}>
+                <option value="">اختر منطقة لإضافتها...</option>
+                {availableAreas.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {stationRepeatedAreaFilter.map((a) => (
+                  <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 8, padding: '4px 8px', fontSize: 12, fontWeight: 600 }}>
+                    {a}
+                    <span onClick={() => removeStationRepeatedArea(a)} style={{ cursor: 'pointer', fontWeight: 800 }}>✕</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <button className="btn-secondary" style={{ marginTop: 12, width: '100%', marginBottom: 12 }} onClick={exportStationRepeated} disabled={exportingStationRepeated}>
+              {exportingStationRepeated ? 'جارٍ التجهيز...' : `🖨️ تصدير ${stationRepeatedAreaFilter.length > 0 ? 'المناطق المحددة' : 'الكل'} كجدول (طباعة / مشاركة)`}
             </button>
 
             {stationRepeatedEntries.length === 0 ? (
