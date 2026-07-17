@@ -25,7 +25,7 @@ export default function DashboardPage() {
   const [resetCountdown, setResetCountdown] = useState('--:--:--');
   const [resetPct, setResetPct] = useState(0);
 
-  const [modalType, setModalType] = useState(null);
+  const [modalType, setModalType] = useState(null); // 'faults' | 'meters' | 'daily' | null
 
   const [period, setPeriod] = useState('daily');
   const [dateFrom, setDateFrom] = useState('');
@@ -35,12 +35,13 @@ export default function DashboardPage() {
   const [block, setBlock] = useState('');
   const [street, setStreet] = useState('');
   const [building, setBuilding] = useState('');
+  const [meterNo, setMeterNo] = useState('');
   const [house, setHouse] = useState('');
   const [paci, setPaci] = useState('');
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState(null); // null = not searched yet
   const [periodStats, setPeriodStats] = useState(null);
 
-  const [toast, setToast] = useState(null);
+  const [toast, setToast] = useState(null); // { text, error }
   const [theme, setTheme] = useState('light');
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function DashboardPage() {
     setTimeout(() => setToast(null), 7000);
   }, []);
 
+  // auth guard
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) { router.replace('/login'); return; }
@@ -80,6 +82,7 @@ export default function DashboardPage() {
     if (!checkingAuth) refreshStats();
   }, [checkingAuth, refreshStats]);
 
+  // clock + reset countdown
   useEffect(() => {
     const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
     function tick() {
@@ -122,7 +125,7 @@ export default function DashboardPage() {
         meters: dateFiltered.filter((r) => r.type === 'meters').length,
         daily: dateFiltered.filter((r) => r.type === 'daily').length,
       });
-      const data = await searchReports({ from, to, type: t, area, block, street, building, house, paci });
+      const data = await searchReports({ from, to, type: t, area, block, street, building, house, paci, meterNo });
       setResults(data);
     } catch (e) {
       showToast('تعذر تنفيذ البحث: ' + e.message, true);
@@ -308,6 +311,12 @@ export default function DashboardPage() {
             <label>الرقم الآلي (PACI)</label>
             <input type="text" value={paci} onChange={(e) => setPaci(e.target.value)} placeholder="بحث بالرقم الآلي" />
           </div>
+          {type === 'meters' && (
+            <div className="field">
+              <label>رقم العداد</label>
+              <input type="text" value={meterNo} onChange={(e) => setMeterNo(e.target.value)} placeholder="بحث برقم العداد" />
+            </div>
+          )}
         </div>
 
         <button className="btn-primary" onClick={() => runSearch()}>بحث</button>
