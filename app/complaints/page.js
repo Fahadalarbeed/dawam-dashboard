@@ -719,10 +719,20 @@ export default function ComplaintsPage() {
 
         <div className="field">
           <label>المناطق (اختر ثم تنضاف تلقائيًا)</label>
-          <select value="" onChange={(e) => addMetricsArea(e.target.value)}>
-            <option value="">اختر منطقة لإضافتها...</option>
-            {availableAreas.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <select value="" onChange={(e) => addMetricsArea(e.target.value)} style={{ flex: 1 }}>
+              <option value="">اختر منطقة لإضافتها...</option>
+              {availableAreas.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ marginTop: 0, width: 'auto', padding: '0 12px', whiteSpace: 'nowrap' }}
+              onClick={() => setSelectedMetricsAreas(availableAreas)}
+            >
+              اختر الكل
+            </button>
+          </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
             {selectedMetricsAreas.map((a) => (
               <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--transactions-bg)', color: 'var(--transactions)', borderRadius: 8, padding: '4px 8px', fontSize: 12, fontWeight: 600 }}>
