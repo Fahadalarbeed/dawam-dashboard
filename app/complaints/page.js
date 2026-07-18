@@ -94,6 +94,8 @@ export default function ComplaintsPage() {
 
   const [selectedMetricsAreas, setSelectedMetricsAreas] = useState([]);
   const [selectedExtremeArea, setSelectedExtremeArea] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [exportingCategory, setExportingCategory] = useState(false);
   const [exportingExtreme, setExportingExtreme] = useState(false);
   const [metricsResult, setMetricsResult] = useState(null);
   const [exportingMetrics, setExportingMetrics] = useState(false);
@@ -155,6 +157,14 @@ export default function ComplaintsPage() {
     if (!complaints) return CATEGORY_DEFS.map(() => 0);
     return CATEGORY_DEFS.map((c) => complaints.filter((r) => c.match(r.data?.action)).length);
   }, [complaints]);
+
+  const categoryComplaints = useMemo(() => {
+    if (!complaints || !selectedCategory) return [];
+    if (selectedCategory === 'all') return complaints;
+    const def = CATEGORY_DEFS.find((c) => c.key === selectedCategory);
+    if (!def) return [];
+    return complaints.filter((r) => def.match(r.data?.action));
+  }, [complaints, selectedCategory]);
 
   const areaBreakdown = useMemo(() => {
     if (!complaints) return { labels: [], values: [] };
@@ -305,6 +315,23 @@ export default function ComplaintsPage() {
     }
   }
 
+  async function exportCategory() {
+    if (!selectedCategory || categoryComplaints.length === 0) return;
+    setExportingCategory(true);
+    try {
+      const { from, to } = dateRangeFor(period, customFrom, customTo);
+      const label = selectedCategory === 'all' ? 'كل_البلاغات' : CATEGORY_DEFS.find((c) => c.key === selectedCategory)?.label.replace(/\s/g, '_') || 'بلاغات';
+      const html = buildMergedComplaintsDoc(categoryComplaints.map((r) => r.data), from, to);
+      const blob = await htmlToPdfBlob(html, 'l');
+      const shared = await sharePdf(blob, `${label}.pdf`);
+      if (!shared) downloadBlob(blob, `${label}.pdf`);
+    } catch (e) {
+      alert('تعذر إنشاء الملف: ' + e.message);
+    } finally {
+      setExportingCategory(false);
+    }
+  }
+
   async function exportExtremeArea() {
     if (!selectedExtremeArea || extremeAreaComplaints.length === 0) return;
     setExportingExtreme(true);
@@ -382,16 +409,54 @@ export default function ComplaintsPage() {
 
       {complaints && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 14 }}>
-          <div className="card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+          <div className="card" style={{ padding: '8px 6px', textAlign: 'center', cursor: 'pointer' }} onClick={() => setSelectedCategory(selectedCategory === 'all' ? null : 'all')}>
             <div className="mono" style={{ fontSize: 22, fontWeight: 800, color: 'var(--transactions)' }}>{complaints.length}</div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>إجمالي البلاغات</div>
           </div>
           {CATEGORY_DEFS.map((c, i) => (
-            <div key={c.key} className="card" style={{ padding: '8px 6px', textAlign: 'center' }}>
+            <div key={c.key} className="card" style={{ padding: '8px 6px', textAlign: 'center', cursor: 'pointer' }} onClick={() => setSelectedCategory(selectedCategory === c.key ? null : c.key)}>
               <div className="mono" style={{ fontSize: 22, fontWeight: 800, color: c.color }}>{categoryCounts[i]}</div>
               <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>{c.label}</div>
             </div>
           ))}
+        </div>
+      )}
+
+      {selectedCategory && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
+              بلاغات: {selectedCategory === 'all' ? 'الإجمالي' : CATEGORY_DEFS.find((c) => c.key === selectedCategory)?.label}
+            </h2>
+            <button onClick={() => setSelectedCategory(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 16, cursor: 'pointer' }}>✕</button>
+          </div>
+          {categoryComplaints.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '16px 10px', color: 'var(--text-muted)', fontSize: 12.5 }}>لا توجد بلاغات</div>
+          ) : (
+            <>
+              {categoryComplaints.map((r) => {
+                const d = r.data || {};
+                const actionText = d.action === 'أخرى' ? (d.otherAction || 'أخرى') : d.action;
+                return (
+                  <div key={r.id} style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', padding: '8px 10px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 8 }}>
+                    {FIELD_LABELS.map(([key, label, format]) => {
+                      const val = format ? format(d[key]) : d[key];
+                      if (!val) return null;
+                      return (
+                        <span key={key} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11, whiteSpace: 'nowrap' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>{label}:</span> <b>{val}</b>
+                        </span>
+                      );
+                    })}
+                    <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 7, padding: '3px 8px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{actionText}</span>
+                  </div>
+                );
+              })}
+              <button className="btn-secondary" style={{ marginTop: 8, width: '100%' }} onClick={exportCategory} disabled={exportingCategory}>
+                {exportingCategory ? 'جارٍ التجهيز...' : '🖨️ تصدير كجدول PDF (طباعة / مشاركة)'}
+              </button>
+            </>
+          )}
         </div>
       )}
 
