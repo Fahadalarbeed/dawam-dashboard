@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
-import { AREA_LIST } from '../../lib/constants';
+import { AREA_LIST, COMPLAINT_ACTIONS } from '../../lib/constants';
 import { searchReports, deleteReport, checkIsAdmin } from '../../lib/reportsApi';
 import { buildRepeatedComplaintsDoc, buildRepeatedStationsDoc, buildMetricsFilterDoc, buildMergedComplaintsDoc } from '../../lib/templates';
 import { htmlToPdfBlob, downloadBlob, sharePdf } from '../../lib/pdf';
@@ -118,6 +118,7 @@ export default function ComplaintsPage() {
   const [searchBuilding, setSearchBuilding] = useState('');
   const [searchHouse, setSearchHouse] = useState('');
   const [searchPaci, setSearchPaci] = useState('');
+  const [searchAction, setSearchAction] = useState('');
   const [searchResults, setSearchResults] = useState(null);
   const [exportingSearch, setExportingSearch] = useState(false);
 
@@ -377,7 +378,7 @@ export default function ComplaintsPage() {
     try {
       const data = await searchReports({
         from, to, type: 'complaints',
-        area: searchArea || 'all', block: searchBlock, street: searchStreet, building: searchBuilding, house: searchHouse, paci: searchPaci,
+        area: searchArea || 'all', block: searchBlock, street: searchStreet, building: searchBuilding, house: searchHouse, paci: searchPaci, action: searchAction,
       });
       setSearchResults(data);
     } catch (e) {
@@ -818,6 +819,13 @@ export default function ComplaintsPage() {
           <div className="field" style={{ marginTop: 0 }}><label>القسيمة</label><input type="text" value={searchBuilding} onChange={(e) => setSearchBuilding(e.target.value)} placeholder="بحث بالقسيمة" /></div>
           <div className="field" style={{ marginTop: 0 }}><label>المنزل</label><input type="text" value={searchHouse} onChange={(e) => setSearchHouse(e.target.value)} placeholder="بحث بالمنزل" /></div>
           <div className="field" style={{ marginTop: 0, gridColumn: '1 / -1' }}><label>الرقم الآلي (PACI)</label><input type="text" value={searchPaci} onChange={(e) => setSearchPaci(e.target.value)} placeholder="بحث بالرقم الآلي" /></div>
+          <div className="field" style={{ marginTop: 0, gridColumn: '1 / -1' }}>
+            <label>الإجراء</label>
+            <select value={searchAction} onChange={(e) => setSearchAction(e.target.value)}>
+              <option value="">كل الإجراءات</option>
+              {COMPLAINT_ACTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
         </div>
 
         <button className="btn-primary" onClick={runComplaintsSearch}>بحث</button>
