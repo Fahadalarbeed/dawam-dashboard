@@ -64,11 +64,17 @@ const METRIC_DEFS = [
 ];
 
 function addressKey(d) {
-  const parts = [d.area, d.block ? `قطعة ${d.block}` : '', d.street ? `شارع ${d.street}` : '', d.building ? `قسيمة ${d.building}` : '', d.house ? `منزل ${d.house}` : ''].filter(Boolean);
+  const parts = [d.area, d.block ? `قطعة ${d.block}` : '', d.street ? `شارع ${d.street}` : '', d.house ? `منزل ${d.house}` : ''].filter(Boolean);
   return parts.join(' — ') || 'بدون عنوان';
 }
 function stationKey(d) {
-  return (d.station || '').trim();
+  const station = (d.station || '').trim();
+  if (!station) return '';
+  return `${d.area || ''}||${station}`;
+}
+function stationDisplay(key) {
+  const [area, station] = key.split('||');
+  return { area, station };
 }
 
 export default function ComplaintsPage() {
@@ -223,9 +229,9 @@ export default function ComplaintsPage() {
     });
     return Object.entries(groups)
       .filter(([, items]) => items.length > 1)
-      .map(([station, items]) => {
-        const areas = [...new Set(items.map((d) => d.area).filter(Boolean))];
-        return { station, count: items.length, items, areas };
+      .map(([key, items]) => {
+        const { area, station } = stationDisplay(key);
+        return { key, station, area, count: items.length, items };
       })
       .sort((a, b) => b.count - a.count);
   }, [complaints, stationRepeatedAreaFilter]);
@@ -581,16 +587,16 @@ export default function ComplaintsPage() {
               stationRepeatedEntries.map((entry, i) => {
                 const maxCount = stationRepeatedEntries[0].count;
                 const pct = Math.round((entry.count / maxCount) * 100);
-                const isOpen = expandedStation === entry.station;
+                const isOpen = expandedStation === entry.key;
                 return (
-                  <div key={entry.station} style={{ marginBottom: 6 }}>
-                    <div onClick={() => setExpandedStation(isOpen ? null : entry.station)} style={{
+                  <div key={entry.key} style={{ marginBottom: 6 }}>
+                    <div onClick={() => setExpandedStation(isOpen ? null : entry.key)} style={{
                       display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', background: 'var(--surface)',
                       border: '1px solid var(--border)', borderRadius: 10, cursor: 'pointer',
                     }}>
                       <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--complaints-bg)', color: 'var(--complaints)', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>محطة/UDS: {entry.station} {entry.areas.length > 0 ? `— ${entry.areas.join('، ')}` : ''}</div>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>محطة/UDS: {entry.station} {entry.area ? `— ${entry.area}` : ''}</div>
                         <div style={{ height: 4, background: 'var(--border)', borderRadius: 3, marginTop: 5, overflow: 'hidden' }}>
                           <div style={{ height: '100%', width: `${pct}%`, background: 'var(--complaints)', borderRadius: 3 }} />
                         </div>
