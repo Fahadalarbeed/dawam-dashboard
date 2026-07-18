@@ -56,8 +56,8 @@ const METRIC_DEFS = [
   { key: 'complaints', label: 'عدد البلاغات', match: () => true },
   { key: 'kitkatFuses', label: 'فيوزات المنزل', match: (a) => ['فيوز 100A', 'فيوز 160A', 'فيوز 200A', 'فيوز 250A', 'فيوز 300A'].includes(a) },
   { key: 'stationFuses', label: 'تبديل فيوزات محطة/محول UDS', match: (a) => a === 'فيوز محطة' || a === 'فيوز UDS' },
-  { key: 'lvCables', label: 'اعطال كيبلات ضغط منخفض', match: () => false },
-  { key: 'htFaults', label: 'اعطال HT', match: () => false },
+  { key: 'lvCables', label: 'اعطال كيبلات ضغط منخفض', match: (a) => a === 'عطل كيبل' },
+  { key: 'htFaults', label: 'اعطال HT', match: (a) => a === 'عطل HT' || a === 'محول طافي' },
   { key: 'burntBase', label: 'تبديل قاعدة محترقة', match: (a) => a === 'قاعدة محترقة' },
   { key: 'burntMeters', label: 'احتراق عدادات', match: (a) => a === 'عداد محروق' },
   { key: 'internalReports', label: 'بلاغات أعطال داخلية', match: (a) => a === 'عطل داخلي' },
@@ -627,10 +627,7 @@ export default function ComplaintsPage() {
       </div>
 
       {complaints && complaints.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-          <SimpleBarChart title="حسب النوع" labels={CATEGORY_DEFS.map((c) => c.label)} values={categoryCounts} color="#2563EB" />
-          <SimpleBarChart title="حسب المنطقة" labels={areaBreakdown.labels} values={areaBreakdown.values} color="#0E9AA8" />
-        </div>
+        <SimpleBarChart title="حسب المنطقة" labels={areaBreakdown.labels} values={areaBreakdown.values} color="#0E9AA8" />
       )}
 
       {areaExtremes && (
