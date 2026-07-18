@@ -153,7 +153,7 @@ export default function DashboardPage() {
     <div className="wrap">
       <header style={{ marginBottom: 22, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--transactions)', marginBottom: 8 }}>محافظة مراقبة الفروانية</div>
+          <div style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--transactions)', marginBottom: 8 }}>مراقبة محافظة الفروانية</div>
           <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--transactions)', boxShadow: '0 0 8px var(--transactions)' }} />
             <span>لوحة العمليات — نظام متابعة الدوام</span>
