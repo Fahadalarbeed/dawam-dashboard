@@ -121,6 +121,7 @@ export default function ComplaintsPage() {
   const [searchHouse, setSearchHouse] = useState('');
   const [searchPaci, setSearchPaci] = useState('');
   const [searchAction, setSearchAction] = useState('');
+  const [showAllComplaints, setShowAllComplaints] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
   const [exportingSearch, setExportingSearch] = useState(false);
 
@@ -871,35 +872,41 @@ export default function ComplaintsPage() {
           {complaints ? `${complaints.length} بلاغ` : 'جارٍ التحميل...'}
         </div>
 
-        {complaints && complaints.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)' }}>
-            لا توجد بلاغات مسجّلة بعد
-          </div>
-        )}
+        <button className="btn-secondary" style={{ marginTop: 0, width: '100%' }} onClick={() => setShowAllComplaints((v) => !v)}>
+          {showAllComplaints ? 'إخفاء البلاغات' : 'إظهار كافة البلاغات'}
+        </button>
 
-        {complaints && complaints.map((r) => {
-          const d = r.data || {};
-          const actionText = d.action === 'أخرى' ? (d.otherAction || 'أخرى') : d.action;
-          return (
-            <div key={r.id} style={{
-              background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10,
-              padding: '8px 10px', marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center',
-            }}>
-              {FIELD_LABELS.map(([key, label, format]) => {
-                const val = format ? format(d[key]) : d[key];
-                if (!val) return null;
-                return (
-                  <span key={key} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11.5, whiteSpace: 'nowrap' }}>
-                    <span style={{ color: 'var(--text-muted)' }}>{label}:</span> <b>{val}</b>
+        {showAllComplaints && (
+          <div style={{ marginTop: 14 }}>
+            {complaints && complaints.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--text-muted)' }}>
+                لا توجد بلاغات مسجّلة بعد
+              </div>
+            )}
+
+            {complaints && complaints.map((r) => {
+              const d = r.data || {};
+              const actionText = d.action === 'أخرى' ? (d.otherAction || 'أخرى') : d.action;
+              return (
+                <div key={r.id} style={{
+                  background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10,
+                  padding: '8px 10px', marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center',
+                }}>
+                  {FIELD_LABELS.map(([key, label, format]) => {
+                    const val = format ? format(d[key]) : d[key];
+                    if (!val) return null;
+                    return (
+                      <span key={key} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11.5, whiteSpace: 'nowrap' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>{label}:</span> <b>{val}</b>
+                      </span>
+                    );
+                  })}
+                  <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 7, padding: '3px 8px', fontSize: 11.5, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                    {actionText}
                   </span>
-                );
-              })}
-              <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 7, padding: '3px 8px', fontSize: 11.5, fontWeight: 800, whiteSpace: 'nowrap' }}>
-                {actionText}
-              </span>
-              {isAdmin && (
-                <button
-                  onClick={() => setConfirmId(r.id)}
+                  {isAdmin && (
+                    <button
+                      onClick={() => setConfirmId(r.id)}
                   style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 15, marginRight: 'auto' }}
                 >
                   ✕
@@ -908,6 +915,8 @@ export default function ComplaintsPage() {
             </div>
           );
         })}
+          </div>
+        )}
       </div>
 
       {confirmId && (
