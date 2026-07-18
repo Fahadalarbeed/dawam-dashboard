@@ -3,7 +3,7 @@ import { useState } from 'react';
 import {
   FAULT_FIELDS, METER_FIELDS, COMPLAINT_FIELDS, DAILY_PERIODS, DAILY_METRICS,
 } from '../lib/constants';
-import { buildFaultDoc, buildMeterDoc, buildDailyDoc, buildComplaintDoc } from '../lib/templates';
+import { buildFaultDoc, buildMeterDoc, buildDailyDoc } from '../lib/templates';
 import { htmlToPdfBlob, sharePdf } from '../lib/pdf';
 import { uploadReportPdf, insertReport } from '../lib/reportsApi';
 
@@ -73,6 +73,29 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
     setSaving(true);
     setStatus({ text: '', kind: '' });
     try {
+      if (type === 'complaints') {
+        const actionText = data.action === 'أخرى' ? (data.otherAction || 'أخرى') : data.action;
+        const displayName = `بلاغ - ${data.area || 'بدون منطقة'} - ${actionText || ''}`.trim();
+        const id = crypto.randomUUID();
+        await insertReport({
+          id,
+          type,
+          report_date: data.reportDate || todayStr(),
+          area: data.area || null,
+          period_key: null,
+          data,
+          pdf_path: null,
+          display_name: displayName,
+          prepared_by: currentUser?.email || '',
+          created_by: currentUser?.id || null,
+          created_by_email: currentUser?.email || null,
+        });
+        setSaved({ done: true });
+        setStatus({ text: 'تم حفظ البلاغ بنجاح ✓', kind: 'ok' });
+        onSaved && onSaved();
+        return;
+      }
+
       let html, displayName, filenamePrefix, area = null, periodKey = null;
 
       if (type === 'faults') {
@@ -84,12 +107,6 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
         html = buildMeterDoc(data);
         displayName = `عداد محروق - ${data.area || 'بدون منطقة'} - ${data.meterNo || ''}`.trim();
         filenamePrefix = 'تقرير_عداد_محروق_';
-        area = data.area || null;
-      } else if (type === 'complaints') {
-        const actionText = data.action === 'أخرى' ? (data.otherAction || 'أخرى') : data.action;
-        html = buildComplaintDoc(data);
-        displayName = `بلاغ - ${data.area || 'بدون منطقة'} - ${actionText || ''}`.trim();
-        filenamePrefix = 'بلاغ_';
         area = data.area || null;
       } else {
         const period = DAILY_PERIODS.find((p) => p.key === data.periodKey);
@@ -115,7 +132,7 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
         data: type === 'daily' ? { ...data, periodLabel: DAILY_PERIODS.find((p) => p.key === data.periodKey).label } : data,
         pdf_path: pdfPath,
         display_name: displayName,
-        prepared_by: type === 'faults' ? data.employeeName : (type === 'complaints' ? (currentUser?.email || '') : data.preparedBy),
+        prepared_by: type === 'faults' ? data.employeeName : data.preparedBy,
         created_by: currentUser?.id || null,
         created_by_email: currentUser?.email || null,
       });
