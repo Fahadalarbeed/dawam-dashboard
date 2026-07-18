@@ -39,7 +39,8 @@ const FIELD_LABELS = [
   ['building', 'القسيمة'],
   ['house', 'المنزل'],
   ['paci', 'الرقم الآلي (PACI)'],
-  ['station', 'المحطة أو UDS'],
+  ['station', 'المحطة'],
+  ['uds', 'UDS'],
   ['unitNo', 'اليونت'],
   ['phone', 'رقم الهاتف'],
 ];
@@ -67,14 +68,16 @@ function addressKey(d) {
   if (!d.area || !d.block || !d.street || !d.house) return null;
   return `${d.area} — قطعة ${d.block} — شارع ${d.street} — منزل ${d.house}`;
 }
-function stationKey(d) {
-  const station = (d.station || '').trim();
-  if (!station) return '';
-  return `${d.area || ''}||${station}`;
-}
-function stationDisplay(key) {
-  const [area, station] = key.split('||');
-  return { area, station };
+function stationCandidates(d) {
+  const list = [];
+  const area = d.area || '';
+  if (d.station && d.station.trim()) {
+    list.push({ key: `station||${area}||${d.station.trim()}`, fieldLabel: 'المحطة', value: d.station.trim(), area });
+  }
+  if (d.uds && d.uds.trim()) {
+    list.push({ key: `uds||${area}||${d.uds.trim()}`, fieldLabel: 'UDS', value: d.uds.trim(), area });
+  }
+  return list;
 }
 
 export default function ComplaintsPage() {
@@ -223,17 +226,15 @@ export default function ComplaintsPage() {
       : complaints;
     const groups = {};
     source.forEach((r) => {
-      const key = stationKey(r.data || {});
-      if (!key) return;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(r.data || {});
+      const candidates = stationCandidates(r.data || {});
+      candidates.forEach((c) => {
+        if (!groups[c.key]) groups[c.key] = { fieldLabel: c.fieldLabel, value: c.value, area: c.area, items: [] };
+        groups[c.key].items.push(r.data || {});
+      });
     });
     return Object.entries(groups)
-      .filter(([, items]) => items.length > 1)
-      .map(([key, items]) => {
-        const { area, station } = stationDisplay(key);
-        return { key, station, area, count: items.length, items };
-      })
+      .filter(([, g]) => g.items.length > 1)
+      .map(([key, g]) => ({ key, fieldLabel: g.fieldLabel, value: g.value, area: g.area, count: g.items.length, items: g.items }))
       .sort((a, b) => b.count - a.count);
   }, [complaints, stationRepeatedAreaFilter]);
 
@@ -597,7 +598,7 @@ export default function ComplaintsPage() {
                     }}>
                       <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--complaints-bg)', color: 'var(--complaints)', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>محطة/UDS: {entry.station} {entry.area ? `— ${entry.area}` : ''}</div>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.fieldLabel}: {entry.value} {entry.area ? `— ${entry.area}` : ''}</div>
                         <div style={{ height: 4, background: 'var(--border)', borderRadius: 3, marginTop: 5, overflow: 'hidden' }}>
                           <div style={{ height: '100%', width: `${pct}%`, background: 'var(--complaints)', borderRadius: 3 }} />
                         </div>
