@@ -64,8 +64,8 @@ const METRIC_DEFS = [
 ];
 
 function addressKey(d) {
-  const parts = [d.area, d.block ? `قطعة ${d.block}` : '', d.street ? `شارع ${d.street}` : '', d.house ? `منزل ${d.house}` : ''].filter(Boolean);
-  return parts.join(' — ') || 'بدون عنوان';
+  if (!d.area || !d.block || !d.street || !d.house) return null;
+  return `${d.area} — قطعة ${d.block} — شارع ${d.street} — منزل ${d.house}`;
 }
 function stationKey(d) {
   const station = (d.station || '').trim();
@@ -206,6 +206,7 @@ export default function ComplaintsPage() {
     const groups = {};
     source.forEach((r) => {
       const key = addressKey(r.data || {});
+      if (!key) return;
       if (!groups[key]) groups[key] = [];
       groups[key].push(r.data || {});
     });
