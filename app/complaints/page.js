@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
-import { AREA_LIST, COMPLAINT_ACTIONS } from '../../lib/constants';
+import { AREA_LIST, COMPLAINT_ACTIONS, DAILY_METRICS } from '../../lib/constants';
 import { searchReports, deleteReport, checkIsAdmin } from '../../lib/reportsApi';
 import { buildRepeatedComplaintsDoc, buildRepeatedStationsDoc, buildMetricsFilterDoc, buildMergedComplaintsDoc } from '../../lib/templates';
 import { htmlToPdfBlob, downloadBlob, sharePdf } from '../../lib/pdf';
@@ -68,6 +68,14 @@ function addressKey(d) {
   if (!d.area || !d.block || !d.street || !d.house) return null;
   return `${d.area} — قطعة ${d.block} — شارع ${d.street} — منزل ${d.house}`;
 }
+const ARABIC_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+function monthLabel(monthKey) {
+  const [y, m] = monthKey.split('-');
+  const idx = parseInt(m, 10) - 1;
+  return `${ARABIC_MONTHS[idx] || m} ${y}`;
+}
+const PERIOD_META = { p1: { label: 'صبح', icon: '☀️' }, p2: { label: 'عصر', icon: '🌇' }, p3: { label: 'ليل', icon: '🌙' } };
+
 function stationCandidates(d) {
   const list = [];
   const area = d.area || '';
@@ -122,6 +130,12 @@ export default function ComplaintsPage() {
   const [searchPaci, setSearchPaci] = useState('');
   const [searchAction, setSearchAction] = useState('');
   const [showAllComplaints, setShowAllComplaints] = useState(false);
+
+  const [dailyReports, setDailyReports] = useState(null);
+  const [showDailyInline, setShowDailyInline] = useState(false);
+  const [dailyYear, setDailyYear] = useState('');
+  const [expandedDailyMonth, setExpandedDailyMonth] = useState(null);
+  const [expandedDailyPeriod, setExpandedDailyPeriod] = useState(null);
   const [searchResults, setSearchResults] = useState(null);
   const [exportingSearch, setExportingSearch] = useState(false);
 
@@ -132,6 +146,19 @@ export default function ComplaintsPage() {
       checkIsAdmin(data.session.user.id).then(setIsAdmin);
     });
   }, [router]);
+
+  useEffect(() => {
+    if (checkingAuth) return;
+    (async () => {
+      try {
+        const data = await searchReports({ from: '2000-01-01', to: '2100-01-01', type: 'daily' });
+        setDailyReports(data);
+      } catch (e) {
+        console.error(e);
+        setDailyReports([]);
+      }
+    })();
+  }, [checkingAuth]);
 
   const loadComplaints = useCallback(async (p, cf, ct) => {
     try {
@@ -165,6 +192,49 @@ export default function ComplaintsPage() {
       setConfirmId(null);
     }
   }
+
+  const dailyMonthlyData = useMemo(() => {
+    if (!dailyReports) return {};
+    const months = {};
+    dailyReports.forEach((r) => {
+      const monthKey = (r.report_date || '').slice(0, 7);
+      if (!monthKey) return;
+      const periodKey = r.period_key || r.data?.periodKey || 'p1';
+      if (!months[monthKey]) {
+        months[monthKey] = {};
+        DAILY_METRICS.forEach((m) => { months[monthKey][m.key] = { p1: 0, p2: 0, p3: 0, total: 0 }; });
+      }
+      DAILY_METRICS.forEach((m) => {
+        const v = r.data?.metrics?.[m.key] || 0;
+        months[monthKey][m.key][periodKey] += v;
+        months[monthKey][m.key].total += v;
+      });
+    });
+    return months;
+  }, [dailyReports]);
+
+  function rankDailyMonths(monthlyData) {
+    const entries = Object.entries(monthlyData).map(([monthKey, metrics]) => {
+      let p1 = 0, p2 = 0, p3 = 0, total = 0;
+      DAILY_METRICS.forEach((m) => { p1 += metrics[m.key].p1; p2 += metrics[m.key].p2; p3 += metrics[m.key].p3; total += metrics[m.key].total; });
+      return { monthKey, label: monthLabel(monthKey), p1, p2, p3, total };
+    });
+    return entries.sort((a, b) => b.total - a.total);
+  }
+
+  const allRankedMonths = useMemo(() => rankDailyMonths(dailyMonthlyData), [dailyMonthlyData]);
+  const topMonth = allRankedMonths[0] || null;
+  const topPeriodKey = topMonth
+    ? Object.entries({ p1: topMonth.p1, p2: topMonth.p2, p3: topMonth.p3 }).sort((a, b) => b[1] - a[1])[0][0]
+    : null;
+
+  const dailyYears = useMemo(() => [...new Set(Object.keys(dailyMonthlyData).map((mk) => mk.slice(0, 4)))].sort((a, b) => b.localeCompare(a)), [dailyMonthlyData]);
+  const effectiveDailyYear = dailyYears.includes(dailyYear) ? dailyYear : (dailyYears[0] || '');
+  const yearRankedMonths = useMemo(() => {
+    if (!effectiveDailyYear) return [];
+    const filtered = Object.fromEntries(Object.entries(dailyMonthlyData).filter(([mk]) => mk.startsWith(effectiveDailyYear)));
+    return rankDailyMonths(filtered);
+  }, [dailyMonthlyData, effectiveDailyYear]);
 
   const categoryCounts = useMemo(() => {
     if (!complaints) return CATEGORY_DEFS.map(() => 0);
@@ -468,6 +538,93 @@ export default function ComplaintsPage() {
                 {exportingCategory ? 'جارٍ التجهيز...' : '🖨️ تصدير كجدول PDF (طباعة / مشاركة)'}
               </button>
             </>
+          )}
+        </div>
+      )}
+
+      {topMonth && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <button onClick={() => setShowDailyInline((v) => !v)} style={{
+            width: '100%', textAlign: 'center', background: 'linear-gradient(180deg, rgba(220,38,38,0.06), rgba(220,38,38,0.01))',
+            border: '1.5px solid rgba(220,38,38,0.35)', borderRadius: 14, padding: '22px 16px', cursor: 'pointer',
+          }}>
+            <div style={{ fontSize: 38, lineHeight: 1, marginBottom: 8 }}>🔺</div>
+            <div style={{ fontSize: 21, fontWeight: 800, color: 'var(--danger)' }}>{topMonth.label}</div>
+            <div style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 600, marginTop: 6 }}>
+              {topPeriodKey && `${PERIOD_META[topPeriodKey].icon} الأكثر انقطاعًا: ${PERIOD_META[topPeriodKey].label}`}
+            </div>
+          </button>
+
+          {showDailyInline && (
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+              <div className="field" style={{ marginTop: 0 }}>
+                <label>اختر السنة</label>
+                <select value={effectiveDailyYear} onChange={(e) => { setDailyYear(e.target.value); setExpandedDailyMonth(null); setExpandedDailyPeriod(null); }}>
+                  {dailyYears.map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </div>
+
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, margin: '10px 0' }}>ترتيب الأشهر — من الأكثر إلى الأقل انقطاعًا</div>
+
+              {yearRankedMonths.map((r, i) => {
+                const maxTotal = yearRankedMonths[0].total;
+                const pct = Math.round((r.total / maxTotal) * 100);
+                const isOpen = expandedDailyMonth === r.monthKey;
+                return (
+                  <div key={r.monthKey} style={{ marginBottom: 6 }}>
+                    <div onClick={() => { setExpandedDailyMonth(isOpen ? null : r.monthKey); setExpandedDailyPeriod(null); }} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', background: 'var(--surface)',
+                      border: '1px solid var(--border)', borderRadius: 10, cursor: 'pointer',
+                    }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: i === 0 ? 'var(--transactions-bg)' : 'var(--surface-2)', color: i === 0 ? 'var(--transactions)' : 'var(--text-muted)', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: i === 0 ? 800 : 600, color: i === 0 ? 'var(--transactions)' : 'var(--text)' }}>{i === 0 ? '🔺 ' : ''}{r.label}</div>
+                        <div style={{ height: 4, background: 'var(--border)', borderRadius: 3, marginTop: 5, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: 'var(--transactions)', borderRadius: 3 }} />
+                        </div>
+                      </div>
+                      <div className="mono" style={{ fontSize: 16, fontWeight: 800, color: 'var(--transactions)', flexShrink: 0 }}>{r.total}</div>
+                    </div>
+
+                    {isOpen && (
+                      <div style={{ padding: '10px 4px 0' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                          {['p1', 'p2', 'p3'].map((pk) => (
+                            <div key={pk} onClick={() => setExpandedDailyPeriod(expandedDailyPeriod === `${r.monthKey}-${pk}` ? null : `${r.monthKey}-${pk}`)} style={{
+                              textAlign: 'center', padding: '10px 6px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, cursor: 'pointer',
+                            }}>
+                              <div style={{ fontSize: 16 }}>{PERIOD_META[pk].icon}</div>
+                              <div className="mono" style={{ fontSize: 16, fontWeight: 800, color: 'var(--transactions)' }}>{r[pk] || 0}</div>
+                              <div style={{ fontSize: 9.5, color: 'var(--text-muted)' }}>{PERIOD_META[pk].label}</div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {expandedDailyPeriod && expandedDailyPeriod.startsWith(r.monthKey) && (
+                          <div style={{ marginTop: 10 }}>
+                            {(() => {
+                              const pk = expandedDailyPeriod.split('-')[1];
+                              const fullMetrics = dailyMonthlyData[r.monthKey];
+                              return (
+                                <>
+                                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)', fontWeight: 700, marginBottom: 6 }}>{PERIOD_META[pk].icon} تفصيل فترة {PERIOD_META[pk].label}</div>
+                                  {DAILY_METRICS.map((m) => (
+                                    <div key={m.key} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+                                      <span style={{ color: 'var(--text-muted)' }}>{m.label}</span>
+                                      <span className="mono" style={{ fontWeight: 800 }}>{fullMetrics[m.key][pk] || 0}</span>
+                                    </div>
+                                  ))}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
