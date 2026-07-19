@@ -590,7 +590,7 @@ export default function ComplaintsPage() {
                       <div style={{ padding: '10px 4px 0' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
                           {['p1', 'p2', 'p3'].map((pk) => (
-                            <div key={pk} onClick={() => setExpandedDailyPeriod(expandedDailyPeriod === `${r.monthKey}-${pk}` ? null : `${r.monthKey}-${pk}`)} style={{
+                            <div key={pk} onClick={() => setExpandedDailyPeriod(expandedDailyPeriod === `${r.monthKey}::${pk}` ? null : `${r.monthKey}::${pk}`)} style={{
                               textAlign: 'center', padding: '10px 6px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, cursor: 'pointer',
                             }}>
                               <div style={{ fontSize: 16 }}>{PERIOD_META[pk].icon}</div>
@@ -600,10 +600,10 @@ export default function ComplaintsPage() {
                           ))}
                         </div>
 
-                        {expandedDailyPeriod && expandedDailyPeriod.startsWith(r.monthKey) && (
+                        {expandedDailyPeriod && expandedDailyPeriod.startsWith(`${r.monthKey}::`) && (
                           <div style={{ marginTop: 10 }}>
                             {(() => {
-                              const pk = expandedDailyPeriod.split('-')[1];
+                              const pk = expandedDailyPeriod.split('::')[1];
                               const fullMetrics = dailyMonthlyData[r.monthKey];
                               return (
                                 <>
