@@ -629,18 +629,28 @@ export default function ComplaintsPage() {
         </div>
       )}
 
-      <div className="card" style={{ marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
         <button onClick={() => setShowRepeated((v) => !v)} style={{
-          width: '100%', textAlign: 'right', background: 'var(--surface-2)', border: '1px solid rgba(37,99,235,0.35)',
-          borderRadius: 12, padding: '14px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+          textAlign: 'center', background: 'var(--surface-2)', border: '1px solid rgba(37,99,235,0.35)',
+          borderRadius: 12, padding: '12px 6px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
         }}>
-          <div style={{ fontSize: 22 }}>🔁</div>
-          <div style={{ fontSize: 13.5, fontWeight: 700 }}>البلاغات المتكررة</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{repeatedEntries.length > 0 ? `${repeatedEntries.length} عنوان متكرر` : 'اضغط للعرض'}</div>
+          <div style={{ fontSize: 20 }}>🔁</div>
+          <div style={{ fontSize: 12, fontWeight: 700 }}>البلاغات المتكررة</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{repeatedEntries.length > 0 ? `${repeatedEntries.length} عنوان متكرر` : 'اضغط للعرض'}</div>
         </button>
+        <button onClick={() => setShowStationRepeated((v) => !v)} style={{
+          textAlign: 'center', background: 'var(--surface-2)', border: '1px solid rgba(180,83,9,0.35)',
+          borderRadius: 12, padding: '12px 6px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+        }}>
+          <div style={{ fontSize: 20 }}>🏭</div>
+          <div style={{ fontSize: 12, fontWeight: 700 }}>بلاغات متكررة محطات</div>
+          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{stationRepeatedEntries.length > 0 ? `${stationRepeatedEntries.length} محطة/UDS متكررة` : 'اضغط للعرض'}</div>
+        </button>
+      </div>
 
-        {showRepeated && (
-          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+      {showRepeated && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div>
             <div className="field" style={{ marginTop: 0 }}>
               <label>المناطق (اتركه فاضي = الكل، أو حدد مناطق معينة)</label>
               <select value="" onChange={(e) => addRepeatedArea(e.target.value)}>
@@ -709,21 +719,12 @@ export default function ComplaintsPage() {
               })
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className="card" style={{ marginBottom: 14 }}>
-        <button onClick={() => setShowStationRepeated((v) => !v)} style={{
-          width: '100%', textAlign: 'right', background: 'var(--surface-2)', border: '1px solid rgba(180,83,9,0.35)',
-          borderRadius: 12, padding: '14px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-        }}>
-          <div style={{ fontSize: 22 }}>🏭</div>
-          <div style={{ fontSize: 13.5, fontWeight: 700 }}>بلاغات متكررة محطات</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{stationRepeatedEntries.length > 0 ? `${stationRepeatedEntries.length} محطة/UDS متكررة` : 'اضغط للعرض'}</div>
-        </button>
-
-        {showStationRepeated && (
-          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+      {showStationRepeated && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div>
             <div className="field" style={{ marginTop: 0 }}>
               <label>المناطق (اتركه فاضي = الكل، أو حدد مناطق معينة)</label>
               <select value="" onChange={(e) => addStationRepeatedArea(e.target.value)}>
@@ -792,8 +793,8 @@ export default function ComplaintsPage() {
               })
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {complaints && complaints.length > 0 && (
         <SimpleBarChart title="حسب المنطقة" labels={areaBreakdown.labels} values={areaBreakdown.values} color="#0E9AA8" />
