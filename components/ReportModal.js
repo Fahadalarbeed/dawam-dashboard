@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
-  FAULT_FIELDS, METER_FIELDS, COMPLAINT_FIELDS, DAILY_PERIODS, DAILY_METRICS,
+  FAULT_FIELDS, METER_FIELDS, COMPLAINT_FIELDS, DAILY_PERIODS, DAILY_METRICS, AREA_LIST, COMPLAINT_ACTIONS,
 } from '../lib/constants';
 import { buildFaultDoc, buildMeterDoc, buildDailyDoc } from '../lib/templates';
 import { htmlToPdfBlob, sharePdf } from '../lib/pdf';
@@ -11,6 +11,175 @@ function todayStr() {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+const LABEL_MAP = [
+  ['area', ['المنطقة', 'منطقة']],
+  ['block', ['القطعة', 'قطعة']],
+  ['street', ['الشارع', 'شارع']],
+  ['house', ['المنزل', 'منزل', 'بيت']],
+  ['paci', ['الرقم الآلي', 'الرقم الالي', 'باسي', 'PACI', 'paci']],
+  ['station', ['المحطة', 'محطة']],
+  ['uds', ['UDS', 'uds', 'يو دي اس']],
+  ['unitNo', ['اليونت', 'يونت', 'اليونيت']],
+  ['phone', ['رقم الهاتف', 'الهاتف', 'جوال', 'تلفون', 'رقم التواصل', 'رقم']],
+];
+
+function parsePastedComplaintText(text) {
+  const result = {};
+  const lines = text.split(/\n|\r/).map((l) => l.trim()).filter(Boolean);
+  lines.forEach((line) => {
+    const sepMatch = line.match(/^(.*?)[:\-–]\s*(.+)$/);
+    if (!sepMatch) return;
+    const labelPart = sepMatch[1].trim();
+    const valuePart = sepMatch[2].trim();
+    for (const [key, labels] of LABEL_MAP) {
+      if (result[key]) continue;
+      if (labels.some((l) => labelPart.includes(l))) {
+        result[key] = valuePart;
+        return;
+      }
+    }
+  });
+  if (!result.area) {
+    const found = AREA_LIST.find((a) => text.includes(a));
+    if (found) result.area = found;
+  }
+  const foundAction = COMPLAINT_ACTIONS.find((a) => text.includes(a));
+  if (foundAction) result.action = foundAction;
+  if (!result.phone) {
+    const phoneMatch = text.match(/\b\d{8}\b/);
+    if (phoneMatch) result.phone = phoneMatch[0];
+  }
+  return result;
+}
+
+let tesseractLoadPromise = null;
+function loadTesseract() {
+  if (window.Tesseract) return Promise.resolve();
+  if (tesseractLoadPromise) return tesseractLoadPromise;
+  tesseractLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('تعذر تحميل مكتبة قراءة الصور'));
+    document.head.appendChild(script);
+  });
+  return tesseractLoadPromise;
+}
+
+function SmartComplaintInput({ onParsed }) {
+  const [text, setText] = useState('');
+  const [status, setStatus] = useState('');
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  function runParse(sourceText) {
+    const parsed = parsePastedComplaintText(sourceText);
+    const count = Object.keys(parsed).length;
+    onParsed(parsed);
+    setStatus(count > 0
+      ? `✓ تم تعبئة ${count} خانة تلقائيًا (راجعها للتأكد)`
+      : '⚠️ ما قدرنا نتعرف على خانات واضحة — جرب صيغة "المنطقة: ..." أو راجع الخانات يدويًا');
+  }
+
+  async function handleImageChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setOcrBusy(true);
+    setStatus('⏳ جارٍ تحميل مكتبة القراءة...');
+    try {
+      await loadTesseract();
+      setStatus('⏳ جارٍ قراءة الصورة...');
+      const { data } = await window.Tesseract.recognize(file, 'ara+eng', {
+        logger: (m) => { if (m.status === 'recognizing text') setStatus(`⏳ جارٍ القراءة... ${Math.round(m.progress * 100)}%`); },
+      });
+      setText(data.text);
+      runParse(data.text);
+    } catch (err) {
+      setStatus('✗ تعذرت قراءة الصورة: ' + err.message);
+    } finally {
+      setOcrBusy(false);
+    }
+  }
+
+  function toggleMic() {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      setStatus('✗ المتصفح ما يدعم التعرف الصوتي (جرّب Chrome بالجوال أو الكمبيوتر)');
+      return;
+    }
+    if (isListening) {
+      recognitionRef.current && recognitionRef.current.stop();
+      return;
+    }
+    const recognition = new SpeechRec();
+    recognition.lang = 'ar-KW';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    let finalTranscript = '';
+
+    recognition.onstart = () => { setIsListening(true); setStatus('🎙️ جارٍ الاستماع... تكلم الآن'); };
+    recognition.onresult = (event) => {
+      let interim = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalTranscript += transcript + ' ';
+        else interim += transcript;
+      }
+      setText(finalTranscript + interim);
+    };
+    recognition.onerror = (event) => { setStatus('✗ خطأ بالتعرف الصوتي: ' + event.error); };
+    recognition.onend = () => {
+      setIsListening(false);
+      const finalText = finalTranscript.trim();
+      if (finalText) runParse(finalText);
+      else setStatus('');
+    };
+    recognitionRef.current = recognition;
+    recognition.start();
+  }
+
+  return (
+    <div className="field" style={{ marginTop: 0 }}>
+      <label>📋 الصق رسالة هنا للتعبئة التلقائية (اختياري)</label>
+      <textarea
+        rows={4}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder={'مثال:\nالمنطقة: الجليب\nقطعة: 3\nشارع: 5\nمنزل: 10\nرقم الهاتف: 99887766\nالإجراء: فيوز محطة'}
+      />
+      <button type="button" className="btn-secondary" style={{ marginTop: 8 }} onClick={() => {
+        if (!text.trim()) { setStatus('الصق رسالة أول'); return; }
+        runParse(text);
+      }}>
+        ⚡ تعبئة تلقائية من الرسالة
+      </button>
+
+      <button type="button" className="btn-secondary" style={{ marginTop: 8, borderColor: isListening ? 'var(--danger)' : undefined }} onClick={toggleMic}>
+        {isListening ? '⏹️ إيقاف التسجيل' : '🎤 تكلّم لتعبئة البلاغ'}
+      </button>
+
+      <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 11, margin: '10px 0' }}>— أو صوّرها بالكاميرا مباشرة (ورقة/رسالة) —</div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleImageChange}
+        disabled={ocrBusy}
+        style={{ width: '100%', fontSize: 11.5 }}
+      />
+
+      {status && (
+        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>{status}</div>
+      )}
+
+      <div style={{ borderTop: '1px solid var(--border)', margin: '14px 0' }} />
+    </div>
+  );
 }
 
 function FieldInput({ field, value, onChange }) {
@@ -168,6 +337,10 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
         </div>
 
         <div style={{ maxHeight: '65vh', overflowY: 'auto', paddingLeft: 4 }}>
+          {type === 'complaints' && (
+            <SmartComplaintInput onParsed={(parsed) => setData((d) => ({ ...d, ...parsed }))} />
+          )}
+
           {fields && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {fields.map((f) => (
