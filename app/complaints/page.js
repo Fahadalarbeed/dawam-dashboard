@@ -64,6 +64,19 @@ const METRIC_DEFS = [
   { key: 'internalReports', label: 'بلاغات أعطال داخلية', match: (a) => a === 'عطل داخلي' },
 ];
 
+function buildMapsUrl(d) {
+  const parts = ['الكويت', d.area || '', d.block ? `قطعة ${d.block}` : '', d.street ? `شارع ${d.street}` : '', d.house ? `منزل ${d.house}` : ''].filter(Boolean).join(' ');
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts)}`;
+}
+function MapLink({ d }) {
+  if (!d.area) return null;
+  return (
+    <a href={buildMapsUrl(d)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11, whiteSpace: 'nowrap', textDecoration: 'none', color: 'var(--transactions)', fontWeight: 700 }}>
+      📍 الموقع
+    </a>
+  );
+}
+
 function addressKey(d) {
   if (!d.area || !d.block || !d.street || !d.house) return null;
   return `${d.area} — قطعة ${d.block} — شارع ${d.street} — منزل ${d.house}`;
@@ -531,6 +544,7 @@ export default function ComplaintsPage() {
                       );
                     })}
                     <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 7, padding: '3px 8px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{actionText}</span>
+                              <MapLink d={d} />
                   </div>
                 );
               })}
@@ -709,6 +723,7 @@ export default function ComplaintsPage() {
                                 );
                               })}
                               <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 7, padding: '3px 8px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{actionText}</span>
+                              <MapLink d={d} />
                             </div>
                           );
                         })}
@@ -783,6 +798,7 @@ export default function ComplaintsPage() {
                                 );
                               })}
                               <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 7, padding: '3px 8px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{actionText}</span>
+                              <MapLink d={d} />
                             </div>
                           );
                         })}
@@ -854,6 +870,7 @@ export default function ComplaintsPage() {
                           );
                         })}
                         <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 7, padding: '3px 8px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{actionText}</span>
+                              <MapLink d={d} />
                       </div>
                     );
                   })}
@@ -1013,6 +1030,7 @@ export default function ComplaintsPage() {
                         );
                       })}
                       <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 7, padding: '3px 8px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{actionText}</span>
+                              <MapLink d={d} />
                     </div>
                   );
                 })}
@@ -1062,6 +1080,7 @@ export default function ComplaintsPage() {
                   <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 7, padding: '3px 8px', fontSize: 11.5, fontWeight: 800, whiteSpace: 'nowrap' }}>
                     {actionText}
                   </span>
+                              <MapLink d={d} />
                   {isAdmin && (
                     <button
                       onClick={() => setConfirmId(r.id)}
