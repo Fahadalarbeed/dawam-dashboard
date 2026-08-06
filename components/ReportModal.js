@@ -76,6 +76,72 @@ function SmartComplaintInput({ onParsed }) {
   const recognitionRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  const [stepActive, setStepActive] = useState(false);
+  const [stepStatus, setStepStatus] = useState('');
+  const stepActiveRef = useRef(false);
+  const stepIndexRef = useRef(0);
+  const stepRecognitionRef = useRef(null);
+  const VOICE_STEP_FIELDS = COMPLAINT_FIELDS.filter((f) => f.key !== 'reportDate');
+
+  function findClosestOption(transcript, options) {
+    const t = transcript.trim();
+    return options.find((o) => t.includes(o) || o.includes(t)) || t;
+  }
+
+  function askStep() {
+    const idx = stepIndexRef.current;
+    if (idx >= VOICE_STEP_FIELDS.length) {
+      setStepStatus('✓ خلصنا كل الخانات! راجعها قبل الحفظ.');
+      stepActiveRef.current = false;
+      setStepActive(false);
+      return;
+    }
+    const field = VOICE_STEP_FIELDS[idx];
+    setStepStatus(`🎙️ قول: ${field.label}`);
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRec();
+    recognition.lang = 'ar-KW';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript.trim();
+      let value = transcript;
+      if (field.type === 'select') value = findClosestOption(transcript, field.options);
+      if (field.key === 'phone' || field.key === 'paci') {
+        const digits = transcript.replace(/[^\d]/g, '');
+        if (digits) value = digits;
+      }
+      onParsed({ [field.key]: value });
+      setStepStatus(`✓ ${field.label}: ${value}`);
+      stepIndexRef.current += 1;
+      setTimeout(() => { if (stepActiveRef.current) askStep(); }, 700);
+    };
+    recognition.onerror = (event) => {
+      setStepStatus(`✗ ما سمعنا شي واضح (${event.error}) — اضغط "إيقاف" وحاول من جديد`);
+    };
+    stepRecognitionRef.current = recognition;
+    recognition.start();
+  }
+
+  function toggleStepMic() {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+      setStepStatus('✗ المتصفح ما يدعم التعرف الصوتي (جرّب Chrome بالجوال أو الكمبيوتر)');
+      return;
+    }
+    if (stepActiveRef.current) {
+      stepActiveRef.current = false;
+      setStepActive(false);
+      stepRecognitionRef.current && stepRecognitionRef.current.stop();
+      setStepStatus('⏸️ توقفت التعبئة الصوتية');
+      return;
+    }
+    stepActiveRef.current = true;
+    setStepActive(true);
+    stepIndexRef.current = 0;
+    askStep();
+  }
+
   function runParse(sourceText) {
     const parsed = parsePastedComplaintText(sourceText);
     const count = Object.keys(parsed).length;
@@ -158,8 +224,15 @@ function SmartComplaintInput({ onParsed }) {
         ⚡ تعبئة تلقائية من الرسالة
       </button>
 
+      <button type="button" className="btn-secondary" style={{ marginTop: 8, borderColor: stepActive ? 'var(--danger)' : undefined }} onClick={toggleStepMic}>
+        {stepActive ? '⏹️ إيقاف التعبئة الصوتية' : '🎙️ تعبئة صوتية خطوة بخطوة'}
+      </button>
+      {stepStatus && (
+        <div style={{ fontSize: 12, color: 'var(--transactions)', fontWeight: 700, marginTop: 6, minHeight: 16 }}>{stepStatus}</div>
+      )}
+
       <button type="button" className="btn-secondary" style={{ marginTop: 8, borderColor: isListening ? 'var(--danger)' : undefined }} onClick={toggleMic}>
-        {isListening ? '⏹️ إيقاف التسجيل' : '🎤 تكلّم لتعبئة البلاغ'}
+        {isListening ? '⏹️ إيقاف التسجيل' : '🎤 تكلّم برسالة كاملة (بدون توقف)'}
       </button>
 
       <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 11, margin: '10px 0' }}>— أو صوّرها بالكاميرا مباشرة (ورقة/رسالة) —</div>
