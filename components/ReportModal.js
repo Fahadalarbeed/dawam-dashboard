@@ -46,7 +46,6 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
       else if (f.type === 'select') initial[f.key] = f.options[0];
       else initial[f.key] = '';
     });
-    if (type === 'complaints') initial.otherAction = '';
   } else {
     initial.reportDate = todayStr();
     initial.periodKey = 'p1';
@@ -75,16 +74,16 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
     setStatus({ text: '', kind: '' });
     try {
       if (type === 'complaints') {
-        const actionText = data.action === 'أخرى' ? (data.otherAction || 'أخرى') : data.action;
-        const displayName = `بلاغ - ${data.area || 'بدون منطقة'} - ${actionText || ''}`.trim();
+        const displayName = `بلاغ - ${data.area || 'بدون منطقة'} - ${data.driver || 'بدون سائق'}`.trim();
         const id = crypto.randomUUID();
+        const complaintData = { ...data, status: 'active', createdAt: new Date().toISOString() };
         await insertReport({
           id,
           type,
           report_date: data.reportDate || todayStr(),
           area: data.area || null,
           period_key: null,
-          data,
+          data: complaintData,
           pdf_path: null,
           display_name: displayName,
           prepared_by: currentUser?.email || '',
@@ -177,13 +176,6 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
                   <FieldInput field={f} value={data[f.key]} onChange={(v) => setField(f.key, v)} />
                 </div>
               ))}
-            </div>
-          )}
-
-          {type === 'complaints' && data.action === 'أخرى' && (
-            <div className="field">
-              <label>حدد نوع الإجراء</label>
-              <input type="text" value={data.otherAction} onChange={(e) => setField('otherAction', e.target.value)} placeholder="اكتب نوع الإجراء" />
             </div>
           )}
 
