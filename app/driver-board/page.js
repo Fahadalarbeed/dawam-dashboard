@@ -27,6 +27,47 @@ function computeDriverMonthlyStats(closedReports, monthKey) {
   return grouped;
 }
 
+function DriverTimeChart({ within1h, within2h, over2h }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+
+  useEffect(() => {
+    let destroyed = false;
+    (async () => {
+      const { default: Chart } = await import('chart.js/auto');
+      if (destroyed || !canvasRef.current) return;
+      if (chartRef.current) chartRef.current.destroy();
+      chartRef.current = new Chart(canvasRef.current, {
+        type: 'bar',
+        data: {
+          labels: ['≤ ساعة', '≤ ساعتين', 'أكثر من ساعتين'],
+          datasets: [{
+            data: [within1h, within2h, over2h],
+            backgroundColor: ['#22C55E', '#F59E0B', '#DC2626'],
+            borderRadius: 6,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { font: { family: 'Cairo', size: 10.5 } } },
+            y: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } },
+          },
+        },
+      });
+    })();
+    return () => { destroyed = true; if (chartRef.current) chartRef.current.destroy(); };
+  }, [within1h, within2h, over2h]);
+
+  return (
+    <div style={{ height: 110 }}>
+      <canvas ref={canvasRef} />
+    </div>
+  );
+}
+
 function DriverStatsSection({ reports }) {
   const [show, setShow] = useState(false);
   const [month, setMonth] = useState('');
@@ -78,10 +119,8 @@ function DriverStatsSection({ reports }) {
                           <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--transactions)' }}>🚗 {driver}</div>
                           <div className="mono" style={{ fontSize: 18, fontWeight: 800, color: 'var(--complaints)' }}>{s.total}</div>
                         </div>
-                        <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
-                          <span style={{ background: 'var(--transactions-bg)', color: 'var(--transactions)', borderRadius: 7, padding: '3px 8px', fontSize: 10.5, fontWeight: 700 }}>≤ ساعة: {s.within1h}</span>
-                          <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 7, padding: '3px 8px', fontSize: 10.5, fontWeight: 700 }}>≤ ساعتين: {s.within2h}</span>
-                          <span style={{ background: 'var(--danger)', color: '#fff', borderRadius: 7, padding: '3px 8px', fontSize: 10.5, fontWeight: 700 }}>أكثر من ساعتين: {s.over2h}</span>
+                        <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
+                          <DriverTimeChart within1h={s.within1h} within2h={s.within2h} over2h={s.over2h} />
                         </div>
                       </div>
                       {isOpen && (
