@@ -239,11 +239,18 @@ export default function DashboardPage() {
 
       <div className="card" style={{ marginBottom: 14 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px' }}>البلاغات</h2>
-        <button onClick={() => router.push('/complaints')} style={{ ...btnCardStyle('var(--complaints)', 'var(--complaints-bg)'), width: '100%' }}>
-          <div style={{ fontSize: 22, marginBottom: 6 }}>📊</div>
-          <div style={{ fontSize: 13.5, fontWeight: 700 }}>إحصائية البلاغات</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>الفلاتر والإحصائيات التفصيلية</div>
-        </button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <button onClick={() => router.push('/complaints')} style={btnCardStyle('var(--complaints)', 'var(--complaints-bg)')}>
+            <div style={{ fontSize: 22, marginBottom: 6 }}>📊</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>إحصائية البلاغات</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>الفلاتر والإحصائيات التفصيلية</div>
+          </button>
+          <button onClick={() => router.push('/driver-board')} style={btnCardStyle('var(--faults)', 'var(--faults-bg)')}>
+            <div style={{ fontSize: 22, marginBottom: 6 }}>🚗</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>لوحة السواق</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>البلاغات النشطة والمغلقة</div>
+          </button>
+        </div>
       </div>
 
       <div className="card" id="search-panel">
