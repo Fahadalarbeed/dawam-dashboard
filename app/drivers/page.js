@@ -6,9 +6,19 @@ import { searchReports } from '../../lib/reportsApi';
 import { groupByDriver, DriverGroupBox } from '../../components/DriverComplaintCard';
 import { playAlertTone, requestNotificationPermission, showBrowserNotification } from '../../lib/alertSound';
 
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
 export default function DriversPublicPage() {
   const [reports, setReports] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [pushStatus, setPushStatus] = useState('');
   const [myName, setMyName] = useState('');
   const [namePicked, setNamePicked] = useState(false);
   const [gpsStatus, setGpsStatus] = useState('');
@@ -46,10 +56,46 @@ export default function DriversPublicPage() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  async function subscribeToPush() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      setPushStatus('✗ الجهاز/المتصفح ما يدعم إشعارات الدفع (جرّب Chrome بالأندرويد، أو ضيف الصفحة للشاشة الرئيسية لو آيفون)');
+      return;
+    }
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        setPushStatus('✗ ما وافقت على إذن الإشعارات');
+        return;
+      }
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
+        });
+      }
+      const res = await fetch('/api/save-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driver: myName, subscription: sub.toJSON() }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setPushStatus('✗ تعذر تسجيل التنبيهات: ' + (body.error || res.statusText));
+        return;
+      }
+      setPushStatus('✓ تفعّلت إشعارات البلاغات — بتوصلك حتى لو الصفحة مقفولة');
+    } catch (e) {
+      setPushStatus('✗ خطأ: ' + e.message);
+    }
+  }
+
   async function enableSound() {
     await requestNotificationPermission();
     setSoundEnabled(true);
     playAlertTone('new');
+    await subscribeToPush();
   }
 
   const active = (reports || []).filter((r) => (r.data?.status || 'active') === 'active');
@@ -143,6 +189,10 @@ export default function DriversPublicPage() {
         <button className="btn-primary" onClick={enableSound} style={{ marginBottom: 14 }}>
           🔔 تفعيل تنبيهات البلاغات الجديدة
         </button>
+      )}
+
+      {pushStatus && (
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 14 }}>{pushStatus}</div>
       )}
 
       {!reports ? (
