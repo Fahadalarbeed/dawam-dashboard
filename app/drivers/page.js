@@ -76,15 +76,16 @@ export default function DriversPublicPage() {
     watchIdRef.current = navigator.geolocation.watchPosition(
       async (pos) => {
         setGpsStatus('🟢 يتم إرسال موقعك الحي...');
-        try {
-          await supabase.from('driver_locations').upsert({
-            driver: myName,
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            updated_at: new Date().toISOString(),
-          });
-        } catch (e) {
-          console.error(e);
+        const { error } = await supabase.from('driver_locations').upsert({
+          driver: myName,
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          updated_at: new Date().toISOString(),
+        });
+        if (error) {
+          setGpsStatus('✗ فشل إرسال الموقع: ' + error.message);
+        } else {
+          setGpsStatus('🟢 تم إرسال موقعك الحي (' + new Date().toLocaleTimeString('ar-KW') + ')');
         }
       },
       (err) => { setGpsStatus('✗ تعذر تحديد الموقع: ' + err.message); },
