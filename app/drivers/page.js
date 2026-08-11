@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../../lib/supabaseClient';
+import { DRIVERS_LIST } from '../../lib/constants';
 import { searchReports } from '../../lib/reportsApi';
 import { groupByDriver, DriverGroupBox } from '../../components/DriverComplaintCard';
 import { playAlertTone, requestNotificationPermission, showBrowserNotification } from '../../lib/alertSound';
@@ -8,7 +9,11 @@ import { playAlertTone, requestNotificationPermission, showBrowserNotification }
 export default function DriversPublicPage() {
   const [reports, setReports] = useState(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [myName, setMyName] = useState('');
+  const [namePicked, setNamePicked] = useState(false);
+  const [gpsStatus, setGpsStatus] = useState('');
   const loadReportsRef = useRef(null);
+  const watchIdRef = useRef(null);
 
   const loadReports = useCallback(async () => {
     try {
@@ -22,6 +27,11 @@ export default function DriversPublicPage() {
 
   useEffect(() => { loadReportsRef.current = loadReports; }, [loadReports]);
   useEffect(() => { loadReports(); }, [loadReports]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('my_driver_name');
+    if (saved) { setMyName(saved); setNamePicked(true); }
+  }, []);
 
   useEffect(() => {
     const channel = supabase
@@ -44,12 +54,89 @@ export default function DriversPublicPage() {
 
   const active = (reports || []).filter((r) => (r.data?.status || 'active') === 'active');
   const grouped = groupByDriver(active);
+  const myActiveCount = active.filter((r) => r.data?.driver === myName).length;
+
+  // Live GPS tracking: while this driver has at least one active complaint, continuously
+  // report their real position to Supabase so staff can watch them move on the map.
+  useEffect(() => {
+    if (!namePicked || !myName || myActiveCount === 0) {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+        setGpsStatus('');
+      }
+      return;
+    }
+    if (!('geolocation' in navigator)) {
+      setGpsStatus('✗ الجهاز ما يدعم تحديد الموقع');
+      return;
+    }
+    if (watchIdRef.current !== null) return; // already watching
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      async (pos) => {
+        setGpsStatus('🟢 يتم إرسال موقعك الحي...');
+        try {
+          await supabase.from('driver_locations').upsert({
+            driver: myName,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            updated_at: new Date().toISOString(),
+          });
+        } catch (e) {
+          console.error(e);
+        }
+      },
+      (err) => { setGpsStatus('✗ تعذر تحديد الموقع: ' + err.message); },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    );
+
+    return () => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, [namePicked, myName, myActiveCount]);
+
+  function pickName(name) {
+    setMyName(name);
+    setNamePicked(true);
+    localStorage.setItem('my_driver_name', name);
+  }
+
+  if (!namePicked) {
+    return (
+      <div className="wrap">
+        <header style={{ marginBottom: 22 }}>
+          <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>لوحة السواق</h1>
+        </header>
+        <div className="card">
+          <div className="field" style={{ marginTop: 0 }}>
+            <label>من أنت؟ اختر اسمك</label>
+            <select onChange={(e) => e.target.value && pickName(e.target.value)} defaultValue="">
+              <option value="" disabled>اختر اسمك...</option>
+              {DRIVERS_LIST.map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>
+            نحتاج نعرف من أنت عشان نقدر نرسل موقعك الحي للوحة الداخلية أثناء ما عندك بلاغ نشط.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="wrap">
-      <header style={{ marginBottom: 22 }}>
+      <header style={{ marginBottom: 22, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>لوحة السواق</h1>
+        <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>🚗 {myName}</span>
       </header>
+
+      {gpsStatus && (
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>{gpsStatus}</div>
+      )}
 
       {!soundEnabled && (
         <button className="btn-primary" onClick={enableSound} style={{ marginBottom: 14 }}>
