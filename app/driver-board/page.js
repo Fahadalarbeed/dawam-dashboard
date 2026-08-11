@@ -155,19 +155,40 @@ function DriverStatsSection({ reports }) {
   );
 }
 
-function TrackingMapSection({ locations }) {
+function TrackingMapSection() {
   const [show, setShow] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [status, setStatus] = useState('');
+  const [liveLocations, setLiveLocations] = useState({});
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const markersRef = useRef({});
 
   useEffect(() => {
     const saved = getSavedApiKey();
     if (saved) setApiKey(saved);
   }, []);
 
-  async function renderMap() {
+  const loadLiveLocations = useCallback(async () => {
+    const { data, error } = await supabase.from('driver_locations').select('*');
+    if (error) { console.error(error); return; }
+    const map = {};
+    (data || []).forEach((row) => { map[row.driver] = { lat: row.lat, lng: row.lng, updated_at: row.updated_at }; });
+    setLiveLocations(map);
+  }, []);
+
+  useEffect(() => {
+    loadLiveLocations();
+    const channel = supabase
+      .channel('driver-locations-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'driver_locations' }, () => {
+        loadLiveLocations();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [loadLiveLocations]);
+
+  async function initMap() {
     if (!apiKey) {
       setStatus('⚠️ حط مفتاح Google Maps API فوق عشان تشوف الخريطة الفعلية');
       return;
@@ -175,29 +196,55 @@ function TrackingMapSection({ locations }) {
     try {
       setStatus('⏳ جارٍ تحميل الخريطة...');
       await loadGoogleMaps(apiKey);
-      const entries = Object.entries(locations);
+      const entries = Object.entries(liveLocations);
       const center = entries.length > 0 ? { lat: entries[0][1].lat, lng: entries[0][1].lng } : { lat: 29.3759, lng: 47.9774 };
       mapInstanceRef.current = new window.google.maps.Map(mapRef.current, { center, zoom: entries.length > 0 ? 12 : 11 });
-      entries.forEach(([driver, loc]) => {
-        const marker = new window.google.maps.Marker({
-          position: { lat: loc.lat, lng: loc.lng }, map: mapInstanceRef.current, title: driver,
-          label: { text: driver.slice(0, 2), color: '#fff' },
-        });
-        const info = new window.google.maps.InfoWindow({
-          content: `<div style="font-family:Cairo,sans-serif;direction:rtl;"><b>🚗 ${driver}</b><br>${loc.address}<br><small>${fmtDateTime(loc.timestamp)}</small></div>`,
-        });
-        marker.addListener('click', () => info.open(mapInstanceRef.current, marker));
-      });
-      setStatus(entries.length > 0 ? `✓ ${entries.length} سائق متتبّع` : 'لا يوجد تتبع بعد');
+      updateMarkers();
+      setStatus(entries.length > 0 ? `✓ ${entries.length} سائق أونلاين` : 'لا يوجد سواق أونلاين حاليًا');
     } catch (e) {
       setStatus('✗ ' + e.message);
     }
   }
 
+  function updateMarkers() {
+    if (!mapInstanceRef.current) return;
+    const entries = Object.entries(liveLocations);
+    const seen = new Set();
+    entries.forEach(([driver, loc]) => {
+      seen.add(driver);
+      const pos = { lat: loc.lat, lng: loc.lng };
+      if (markersRef.current[driver]) {
+        markersRef.current[driver].marker.setPosition(pos);
+      } else {
+        const marker = new window.google.maps.Marker({
+          position: pos, map: mapInstanceRef.current, title: driver,
+          label: { text: driver.slice(0, 2), color: '#fff' },
+        });
+        const info = new window.google.maps.InfoWindow({
+          content: `<div style="font-family:Cairo,sans-serif;direction:rtl;"><b>🚗 ${driver}</b><br><small>${fmtDateTime(loc.updated_at)}</small></div>`,
+        });
+        marker.addListener('click', () => info.open(mapInstanceRef.current, marker));
+        markersRef.current[driver] = { marker, info };
+      }
+    });
+    Object.keys(markersRef.current).forEach((driver) => {
+      if (!seen.has(driver)) {
+        markersRef.current[driver].marker.setMap(null);
+        delete markersRef.current[driver];
+      }
+    });
+    setStatus(entries.length > 0 ? `✓ ${entries.length} سائق أونلاين` : 'لا يوجد سواق أونلاين حاليًا');
+  }
+
   useEffect(() => {
-    if (show) renderMap();
+    if (show && mapInstanceRef.current) updateMarkers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [show, locations]);
+  }, [liveLocations]);
+
+  useEffect(() => {
+    if (show && !mapInstanceRef.current) initMap();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [show]);
 
   return (
     <div className="card" style={{ marginTop: 14 }}>
@@ -206,8 +253,8 @@ function TrackingMapSection({ locations }) {
         borderRadius: 12, padding: '14px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
       }}>
         <div style={{ fontSize: 22 }}>🗺️</div>
-        <div style={{ fontSize: 13.5, fontWeight: 700 }}>خريطة تتبع السواق</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>آخر موقع ضغط عليه كل سائق</div>
+        <div style={{ fontSize: 13.5, fontWeight: 700 }}>خريطة تتبع السواق الحيّة</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>موقع كل سائق عنده بلاغ نشط، لحظة بلحظة</div>
       </button>
 
       {show && (
@@ -216,7 +263,7 @@ function TrackingMapSection({ locations }) {
             <label>مفتاح Google Maps API</label>
             <input type="text" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="الصق مفتاح API هنا" />
           </div>
-          <button className="btn-primary" onClick={() => { localStorage.setItem('gmaps_api_key', apiKey); renderMap(); }}>
+          <button className="btn-primary" onClick={() => { localStorage.setItem('gmaps_api_key', apiKey); initMap(); }}>
             💾 حفظ المفتاح وتحميل الخريطة
           </button>
 
@@ -224,16 +271,15 @@ function TrackingMapSection({ locations }) {
           <div ref={mapRef} style={{ width: '100%', height: 400, borderRadius: 14, overflow: 'hidden', border: '1px solid var(--border)', display: apiKey ? 'block' : 'none' }} />
 
           <div style={{ marginTop: 14 }}>
-            {Object.entries(locations).length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)' }}>لا يوجد تتبع بعد — لما سائق يضغط &quot;خرائط Google&quot; على بلاغ، بيسجّل موقعه هنا تلقائيًا</div>
+            {Object.entries(liveLocations).length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)' }}>لا يوجد سواق أونلاين — التتبع يشتغل تلقائيًا عند أي سائق عنده بلاغ نشط وفاتح صفحة السواق بجواله</div>
             ) : (
-              Object.entries(locations).map(([driver, loc]) => (
+              Object.entries(liveLocations).map(([driver, loc]) => (
                 <div key={driver} className="card" style={{ marginBottom: 8, padding: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--transactions)' }}>🚗 {driver}</div>
-                    <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{fmtDateTime(loc.timestamp)}</div>
+                    <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{fmtDateTime(loc.updated_at)}</div>
                   </div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4 }}>📍 {loc.address}</div>
                 </div>
               ))
             )}
@@ -249,7 +295,6 @@ export default function DriverBoardInternalPage() {
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [reports, setReports] = useState(null);
   const [tab, setTab] = useState('active');
-  const [locations, setLocations] = useState({});
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -285,31 +330,6 @@ export default function DriverBoardInternalPage() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [checkingAuth, loadReports]);
-
-  async function handleTrack(d) {
-    const apiKey = getSavedApiKey();
-    if (!apiKey) {
-      alert('⚠️ ما فيه مفتاح Google Maps محفوظ — افتح "خريطة تتبع السواق" وسجّل المفتاح أول');
-      return;
-    }
-    try {
-      await loadGoogleMaps(apiKey);
-    } catch (e) {
-      alert('✗ تعذر تحميل خرائط Google: ' + e.message);
-      return;
-    }
-    const geocoder = new window.google.maps.Geocoder();
-    const addressText = [d.area || '', d.block ? `Block ${d.block}` : '', d.street ? `Street ${d.street}` : '', d.house ? `House ${d.house}` : '', 'Kuwait'].filter(Boolean).join(', ');
-    geocoder.geocode({ address: addressText }, (results, geoStatus) => {
-      if (geoStatus === 'OK' && results[0]) {
-        const loc = results[0].geometry.location;
-        setLocations((prev) => ({ ...prev, [d.driver || 'بدون سائق']: { lat: loc.lat(), lng: loc.lng(), address: addressText, timestamp: new Date().toISOString() } }));
-        alert(`✓ تم تسجيل موقع السائق (${d.driver || 'بدون سائق'})\nالعنوان: ${addressText}`);
-      } else {
-        alert(`✗ تعذر تحديد الموقع من العنوان (${geoStatus})\nالعنوان المرسل: ${addressText}`);
-      }
-    });
-  }
 
   if (checkingAuth) {
     return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>جارٍ التحقق...</div>;
@@ -353,12 +373,12 @@ export default function DriverBoardInternalPage() {
         <div className="card"><div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--text-muted)' }}>لا توجد بلاغات {tab === 'active' ? 'نشطة' : 'مغلقة اليوم'}</div></div>
       ) : (
         grouped.map(([driver, items]) => (
-          <DriverGroupBox key={driver} driver={driver} reports={items} onChanged={loadReports} onTrack={handleTrack} />
+          <DriverGroupBox key={driver} driver={driver} reports={items} onChanged={loadReports} />
         ))
       )}
 
       <DriverStatsSection reports={reports} />
-      <TrackingMapSection locations={locations} />
+      <TrackingMapSection />
     </div>
   );
 }
