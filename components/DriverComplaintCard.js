@@ -14,8 +14,14 @@ export function fmtDateTime(iso) {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} — ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 export function buildMapsUrl(d) {
-  const parts = ['الكويت', d.area || '', d.block ? `قطعة ${d.block}` : '', d.street ? `شارع ${d.street}` : '', d.house ? `منزل ${d.house}` : ''].filter(Boolean).join(' ');
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(parts)}`;
+  const parts = [
+    d.area || '',
+    d.block ? `Block ${d.block}` : '',
+    d.street ? `Street ${d.street}` : '',
+    d.house ? `House ${d.house}` : '',
+    'Kuwait',
+  ].filter(Boolean).join(', ');
+  return `https://www.openstreetmap.org/search?query=${encodeURIComponent(parts)}`;
 }
 export async function openKuwaitFinder(paci) {
   if (!paci) {
@@ -140,7 +146,7 @@ export function ComplaintCard({ report, onChanged, onTrack }) {
           onClick={(e) => { e.stopPropagation(); onTrack && onTrack(d); }}
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11, textDecoration: 'none', color: 'var(--transactions)', fontWeight: 700 }}
         >
-          📍 خرائط Google
+          📍 الموقع (OpenStreetMap)
         </a>
         <button
           type="button"
