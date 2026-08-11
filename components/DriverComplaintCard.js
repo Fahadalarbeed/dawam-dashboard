@@ -21,7 +21,7 @@ export function buildMapsUrl(d) {
     d.house ? `House ${d.house}` : '',
     'Kuwait',
   ].filter(Boolean).join(', ');
-  return `https://www.openstreetmap.org/search?query=${encodeURIComponent(parts)}`;
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(parts)}&travelmode=driving`;
 }
 export async function openKuwaitFinder(paci) {
   if (!paci) {
@@ -146,7 +146,7 @@ export function ComplaintCard({ report, onChanged, onTrack }) {
           onClick={(e) => { e.stopPropagation(); onTrack && onTrack(d); }}
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11, textDecoration: 'none', color: 'var(--transactions)', fontWeight: 700 }}
         >
-          📍 الموقع (OpenStreetMap)
+          🧭 المسار (Google)
         </a>
         <button
           type="button"
