@@ -90,6 +90,17 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
           created_by: currentUser?.id || null,
           created_by_email: currentUser?.email || null,
         });
+        if (data.driver) {
+          fetch('/api/notify-driver', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              driver: data.driver,
+              title: '🚨 بلاغ جديد',
+              body: `${data.area || 'بدون منطقة'}${data.block ? ' — قطعة ' + data.block : ''}${data.street ? ' — شارع ' + data.street : ''}`,
+            }),
+          }).catch((e) => console.error('notify-driver failed', e));
+        }
         setSaved({ done: true });
         setStatus({ text: 'تم حفظ البلاغ بنجاح ✓', kind: 'ok' });
         onSaved && onSaved();
