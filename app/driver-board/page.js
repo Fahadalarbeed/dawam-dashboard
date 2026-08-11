@@ -25,7 +25,9 @@ function computeDriverMonthlyStats(closedReports, monthKey) {
     else grouped[driver].over2h++;
     grouped[driver].items.push({ ...d, durationHours: hours });
     const area = d.area || 'بدون منطقة';
-    grouped[driver].byArea[area] = (grouped[driver].byArea[area] || 0) + 1;
+    if (!grouped[driver].byArea[area]) grouped[driver].byArea[area] = { count: 0, totalHours: 0 };
+    grouped[driver].byArea[area].count++;
+    grouped[driver].byArea[area].totalHours += hours;
   });
   return grouped;
 }
@@ -146,12 +148,18 @@ function DriverStatsSection({ reports }) {
                         <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
                           <DriverTimeChart within1h={s.within1h} within2h={s.within2h} over2h={s.over2h} />
                         </div>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 8 }}>
-                          {Object.entries(s.byArea).sort((a, b) => b[1] - a[1]).map(([area, count]) => (
-                            <span key={area} style={{ background: 'var(--transactions-bg)', color: 'var(--transactions)', borderRadius: 6, padding: '2px 8px', fontSize: 10.5, fontWeight: 700 }}>
-                              📍 {area}: {count}
-                            </span>
-                          ))}
+                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 700, marginTop: 10, marginBottom: 4 }}>حسب المنطقة:</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          {Object.entries(s.byArea).sort((a, b) => b[1].count - a[1].count).map(([area, info]) => {
+                            const avgHours = info.totalHours / info.count;
+                            const avgLabel = avgHours < 1 ? `${Math.round(avgHours * 60)} د` : `${avgHours.toFixed(1)} س`;
+                            return (
+                              <div key={area} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7, padding: '4px 8px', fontSize: 10.5 }}>
+                                <span style={{ fontWeight: 700, color: 'var(--transactions)' }}>📍 {area}</span>
+                                <span style={{ color: 'var(--text-muted)' }}>{info.count} بلاغ — متوسط ⏱️ {avgLabel}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                       {isOpen && (
