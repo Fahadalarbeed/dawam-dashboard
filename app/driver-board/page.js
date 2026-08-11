@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { searchReports } from '../../lib/reportsApi';
 import { groupByDriver, DriverGroupBox, fmtDateTime, todayStr } from '../../components/DriverComplaintCard';
 import { playAlertTone } from '../../lib/alertSound';
+import { loadGoogleMaps, getSavedApiKey } from '../../lib/googleMapsLoader';
 
 const ARABIC_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 
@@ -160,25 +161,11 @@ function TrackingMapSection({ locations }) {
   const [status, setStatus] = useState('');
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
-  const loadPromiseRef = useRef(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('gmaps_api_key');
+    const saved = getSavedApiKey();
     if (saved) setApiKey(saved);
   }, []);
-
-  function loadGoogleMaps(key) {
-    if (window.google && window.google.maps) return Promise.resolve();
-    if (loadPromiseRef.current) return loadPromiseRef.current;
-    loadPromiseRef.current = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}`;
-      script.onload = () => resolve();
-      script.onerror = () => reject(new Error('تعذر تحميل خرائط Google — تأكد المفتاح صحيح'));
-      document.head.appendChild(script);
-    });
-    return loadPromiseRef.current;
-  }
 
   async function renderMap() {
     if (!apiKey) {
@@ -299,10 +286,17 @@ export default function DriverBoardInternalPage() {
     return () => { supabase.removeChannel(channel); };
   }, [checkingAuth, loadReports]);
 
-  function handleTrack(d) {
-    if (!window.google || !window.google.maps) return;
+  async function handleTrack(d) {
+    const apiKey = getSavedApiKey();
+    if (!apiKey) return; // no key saved yet — user hasn't set up tracking, nothing to do
+    try {
+      await loadGoogleMaps(apiKey);
+    } catch (e) {
+      console.error(e);
+      return;
+    }
     const geocoder = new window.google.maps.Geocoder();
-    const addressText = ['الكويت', d.area || '', d.block ? `قطعة ${d.block}` : '', d.street ? `شارع ${d.street}` : '', d.house ? `منزل ${d.house}` : ''].filter(Boolean).join(' ');
+    const addressText = [d.area || '', d.block ? `Block ${d.block}` : '', d.street ? `Street ${d.street}` : '', d.house ? `House ${d.house}` : '', 'Kuwait'].filter(Boolean).join(', ');
     geocoder.geocode({ address: addressText }, (results, geoStatus) => {
       if (geoStatus === 'OK' && results[0]) {
         const loc = results[0].geometry.location;
