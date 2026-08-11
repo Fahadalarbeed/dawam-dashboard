@@ -34,10 +34,11 @@ function DriverTimeChart({ within1h, within2h, over2h }) {
   useEffect(() => {
     let destroyed = false;
     (async () => {
-      const { default: Chart } = await import('chart.js/auto');
+      const { Chart, BarController, BarElement, CategoryScale, LinearScale, Tooltip } = await import('chart.js');
+      Chart.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip);
       if (destroyed || !canvasRef.current) return;
       if (chartRef.current) chartRef.current.destroy();
-      chartRef.current = new Chart(canvasRef.current, {
+      chartRef.current = new Chart(canvasRef.current.getContext('2d'), {
         type: 'bar',
         data: {
           labels: ['≤ ساعة', '≤ ساعتين', 'أكثر من ساعتين'],
