@@ -52,6 +52,11 @@ export default function DriversPublicPage() {
         showBrowserNotification('🚨 بلاغ جديد', `السائق: ${d.driver || 'غير محدد'} — ${d.area || ''}`);
         loadReportsRef.current && loadReportsRef.current();
       })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'reports', filter: 'type=eq.complaints' }, () => {
+        // a complaint changed status (e.g. closed by staff on the internal board) — refresh so
+        // active-complaint counts (and therefore GPS tracking) stay accurate immediately.
+        loadReportsRef.current && loadReportsRef.current();
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, []);
@@ -111,6 +116,7 @@ export default function DriversPublicPage() {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
         setGpsStatus('');
+        if (myName) supabase.from('driver_locations').delete().eq('driver', myName).then(() => {});
       }
       return;
     }
