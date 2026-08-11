@@ -4,6 +4,13 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import { searchReports } from '../../lib/reportsApi';
 import { groupByDriver, DriverGroupBox, fmtDateTime, todayStr } from '../../components/DriverComplaintCard';
+
+function toLocalDateStr(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 import { playAlertTone } from '../../lib/alertSound';
 import { loadGoogleMaps, getSavedApiKey } from '../../lib/googleMapsLoader';
 
@@ -471,7 +478,7 @@ export default function DriverBoardInternalPage() {
 
   const today = todayStr();
   const active = (reports || []).filter((r) => (r.data?.status || 'active') === 'active');
-  const closed = (reports || []).filter((r) => r.data?.status === 'closed' && (r.data?.closedAt || '').slice(0, 10) === today);
+  const closed = (reports || []).filter((r) => r.data?.status === 'closed' && toLocalDateStr(r.data?.closedAt) === today);
   const list = tab === 'active' ? active : closed;
   const grouped = groupByDriver(list);
 
