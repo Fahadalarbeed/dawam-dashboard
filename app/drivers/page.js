@@ -62,7 +62,8 @@ export default function DriversPublicPage() {
       return;
     }
     try {
-      const reg = await navigator.serviceWorker.register('/sw.js');
+      await navigator.serviceWorker.register('/sw.js');
+      const reg = await navigator.serviceWorker.ready;
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         setPushStatus('✗ ما وافقت على إذن الإشعارات');
