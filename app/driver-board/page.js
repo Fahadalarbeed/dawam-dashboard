@@ -288,11 +288,14 @@ export default function DriverBoardInternalPage() {
 
   async function handleTrack(d) {
     const apiKey = getSavedApiKey();
-    if (!apiKey) return; // no key saved yet — user hasn't set up tracking, nothing to do
+    if (!apiKey) {
+      alert('⚠️ ما فيه مفتاح Google Maps محفوظ — افتح "خريطة تتبع السواق" وسجّل المفتاح أول');
+      return;
+    }
     try {
       await loadGoogleMaps(apiKey);
     } catch (e) {
-      console.error(e);
+      alert('✗ تعذر تحميل خرائط Google: ' + e.message);
       return;
     }
     const geocoder = new window.google.maps.Geocoder();
@@ -301,6 +304,9 @@ export default function DriverBoardInternalPage() {
       if (geoStatus === 'OK' && results[0]) {
         const loc = results[0].geometry.location;
         setLocations((prev) => ({ ...prev, [d.driver || 'بدون سائق']: { lat: loc.lat(), lng: loc.lng(), address: addressText, timestamp: new Date().toISOString() } }));
+        alert(`✓ تم تسجيل موقع السائق (${d.driver || 'بدون سائق'})\nالعنوان: ${addressText}`);
+      } else {
+        alert(`✗ تعذر تحديد الموقع من العنوان (${geoStatus})\nالعنوان المرسل: ${addressText}`);
       }
     });
   }
