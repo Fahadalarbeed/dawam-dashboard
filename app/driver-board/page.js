@@ -288,7 +288,6 @@ function AreaStatsSection({ reports }) {
 }
 
 function TrackingMapSection() {
-  const [show, setShow] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [status, setStatus] = useState('');
   const [liveLocations, setLiveLocations] = useState({});
@@ -369,55 +368,58 @@ function TrackingMapSection() {
   }
 
   useEffect(() => {
-    if (show && mapInstanceRef.current) updateMarkers();
+    if (apiKey && !mapInstanceRef.current) initMap();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey]);
+
+  useEffect(() => {
+    if (mapInstanceRef.current) updateMarkers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [liveLocations]);
 
-  useEffect(() => {
-    if (show && !mapInstanceRef.current) initMap();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [show]);
-
   return (
     <div className="card" style={{ marginTop: 14 }}>
-      <button onClick={() => setShow((v) => !v)} className="new-report-btn" style={{
-        width: '100%', textAlign: 'center', background: 'var(--surface-2)', border: '1px solid rgba(37,99,235,0.35)',
-        borderRadius: 12, padding: '14px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-      }}>
-        <div style={{ fontSize: 22 }}>🗺️</div>
-        <div style={{ fontSize: 13.5, fontWeight: 700 }}>خريطة تتبع السواق الحيّة</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>موقع كل سائق عنده بلاغ نشط، لحظة بلحظة</div>
-      </button>
-
-      {show && (
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-          <div className="field" style={{ marginTop: 0 }}>
-            <label>مفتاح Google Maps API</label>
-            <input type="text" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="الصق مفتاح API هنا" />
-          </div>
-          <button className="btn-primary" onClick={() => { localStorage.setItem('gmaps_api_key', apiKey); initMap(); }}>
-            💾 حفظ المفتاح وتحميل الخريطة
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>🗺️ خريطة تتبع السواق الحيّة</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>موقع كل سائق عنده بلاغ نشط، لحظة بلحظة</div>
+        </div>
+        {apiKey && (
+          <button onClick={() => setApiKey('')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 16, cursor: 'pointer' }} title="تغيير مفتاح API">
+            ⚙️
           </button>
+        )}
+      </div>
 
-          {status && <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', margin: '10px 0' }}>{status}</div>}
-          <div ref={mapRef} style={{ width: '100%', height: 400, borderRadius: 14, overflow: 'hidden', border: '1px solid var(--border)', display: apiKey ? 'block' : 'none' }} />
-
-          <div style={{ marginTop: 14 }}>
-            {Object.entries(liveLocations).length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)' }}>لا يوجد سواق أونلاين — التتبع يشتغل تلقائيًا عند أي سائق عنده بلاغ نشط وفاتح صفحة السواق بجواله</div>
-            ) : (
-              Object.entries(liveLocations).map(([driver, loc]) => (
-                <div key={driver} className="card" style={{ marginBottom: 8, padding: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--transactions)' }}>🚗 {driver}</div>
-                    <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{fmtDateTime(loc.updated_at)}</div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+      {!apiKey && (
+        <div className="field" style={{ marginTop: 0 }}>
+          <label>مفتاح Google Maps API</label>
+          <input type="text" defaultValue="" onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              const val = e.target.value.trim();
+              if (val) { localStorage.setItem('gmaps_api_key', val); setApiKey(val); }
+            }
+          }} placeholder="الصق مفتاح API واضغط Enter" />
         </div>
       )}
+
+      {status && <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', margin: '10px 0' }}>{status}</div>}
+      <div ref={mapRef} style={{ width: '100%', height: 600, borderRadius: 14, overflow: 'hidden', border: '1px solid var(--border)', display: apiKey ? 'block' : 'none' }} />
+
+      <div style={{ marginTop: 14 }}>
+        {Object.entries(liveLocations).length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)' }}>لا يوجد سواق أونلاين — التتبع يشتغل تلقائيًا عند أي سائق عنده بلاغ نشط وفاتح صفحة السواق بجواله</div>
+        ) : (
+          Object.entries(liveLocations).map(([driver, loc]) => (
+            <div key={driver} className="card" style={{ marginBottom: 8, padding: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--transactions)' }}>🚗 {driver}</div>
+                <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{fmtDateTime(loc.updated_at)}</div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -509,8 +511,10 @@ export default function DriverBoardInternalPage() {
         ))
       )}
 
-      <DriverStatsSection reports={reports} />
-      <AreaStatsSection reports={reports} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <DriverStatsSection reports={reports} />
+        <AreaStatsSection reports={reports} />
+      </div>
       <TrackingMapSection />
     </div>
   );
