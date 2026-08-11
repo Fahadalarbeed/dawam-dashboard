@@ -1,7 +1,8 @@
 'use client';
 import { useState } from 'react';
 import { COMPLAINT_ACTIONS } from '../lib/constants';
-import { updateReportData } from '../lib/reportsApi';
+import { updateReportData, searchReports } from '../lib/reportsApi';
+import { supabase } from '../lib/supabaseClient';
 
 export function pad(n) { return String(n).padStart(2, '0'); }
 export function todayStr() {
@@ -57,6 +58,20 @@ export function CloseForm({ report, onClosed, onTrack }) {
         note: note || '',
         closedAt: new Date().toISOString(),
       });
+
+      const driverName = report.data?.driver;
+      if (driverName) {
+        try {
+          const all = await searchReports({ from: '2000-01-01', to: '2100-01-01', type: 'complaints' });
+          const stillActive = all.some((r) => r.id !== report.id && r.data?.driver === driverName && (r.data?.status || 'active') === 'active');
+          if (!stillActive) {
+            await supabase.from('driver_locations').delete().eq('driver', driverName);
+          }
+        } catch (e) {
+          console.error('location cleanup failed', e);
+        }
+      }
+
       onClosed();
     } catch (e) {
       alert('تعذر إغلاق البلاغ: ' + e.message);
