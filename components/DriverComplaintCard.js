@@ -14,16 +14,41 @@ export function fmtDateTime(iso) {
   const d = new Date(iso);
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} — ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
-export function buildMapsUrl(d) {
-  const parts = [
+export function buildAddressText(d) {
+  return [
     d.area || '',
     d.block ? `Block ${d.block}` : '',
     d.street ? `Street ${d.street}` : '',
     d.house ? `House ${d.house}` : '',
     'Kuwait',
   ].filter(Boolean).join(', ');
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(parts)}&travelmode=driving`;
 }
+
+export function buildMapsUrl(d) {
+  // fallback text-search link — used only if OSM geocoding fails
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(buildAddressText(d))}&travelmode=driving`;
+}
+
+export async function openGoogleRoute(d) {
+  const addressText = buildAddressText(d);
+  const newTab = window.open('', '_blank', 'noopener');
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(addressText)}`, {
+      headers: { 'Accept-Language': 'ar' },
+    });
+    const results = await res.json();
+    if (results && results[0]) {
+      const { lat, lon } = results[0];
+      if (newTab) newTab.location.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=driving`;
+      return;
+    }
+  } catch (e) {
+    console.error('OSM geocoding failed', e);
+  }
+  // fallback: text-based Google search if OSM couldn't find it
+  if (newTab) newTab.location.href = buildMapsUrl(d);
+}
+
 export async function openKuwaitFinder(paci) {
   if (!paci) {
     alert('ما فيه رقم آلي (PACI) مسجّل بهذا البلاغ');
@@ -156,13 +181,13 @@ export function ComplaintCard({ report, onChanged, onTrack }) {
             اليونت: {d.unitNo}
           </span>
         )}
-        <a
-          href={buildMapsUrl(d)} target="_blank" rel="noopener noreferrer"
-          onClick={(e) => { e.stopPropagation(); onTrack && onTrack(d); }}
-          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11, textDecoration: 'none', color: 'var(--transactions)', fontWeight: 700 }}
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onTrack && onTrack(d); openGoogleRoute(d); }}
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11, color: 'var(--transactions)', fontWeight: 700, cursor: 'pointer' }}
         >
           🧭 المسار (Google)
-        </a>
+        </button>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); openKuwaitFinder(d.paci); }}
