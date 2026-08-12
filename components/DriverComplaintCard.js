@@ -31,7 +31,6 @@ export function buildMapsUrl(d) {
 
 export async function openGoogleRoute(d) {
   const addressText = buildAddressText(d);
-  const newTab = window.open('', '_blank', 'noopener');
   try {
     const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(addressText)}`, {
       headers: { 'Accept-Language': 'ar' },
@@ -39,14 +38,14 @@ export async function openGoogleRoute(d) {
     const results = await res.json();
     if (results && results[0]) {
       const { lat, lon } = results[0];
-      if (newTab) newTab.location.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=driving`;
+      window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=driving`;
       return;
     }
   } catch (e) {
     console.error('OSM geocoding failed', e);
   }
   // fallback: text-based Google search if OSM couldn't find it
-  if (newTab) newTab.location.href = buildMapsUrl(d);
+  window.location.href = buildMapsUrl(d);
 }
 
 export async function openKuwaitFinder(paci) {
@@ -140,9 +139,21 @@ export function CloseForm({ report, onClosed, onTrack }) {
 
 export function ComplaintCard({ report, onChanged, onTrack }) {
   const [expanded, setExpanded] = useState(false);
+  const [routeLoading, setRouteLoading] = useState(false);
   const d = report.data || {};
   const isClosed = d.status === 'closed';
   const addressParts = [d.area, d.block ? `قطعة ${d.block}` : '', d.street ? `شارع ${d.street}` : '', d.house ? `منزل ${d.house}` : ''].filter(Boolean).join(' — ');
+
+  async function handleRouteClick(e) {
+    e.stopPropagation();
+    onTrack && onTrack(d);
+    setRouteLoading(true);
+    try {
+      await openGoogleRoute(d);
+    } finally {
+      setRouteLoading(false);
+    }
+  }
 
   return (
     <div className="card" style={{ marginBottom: 10, borderColor: isClosed ? 'var(--border)' : 'rgba(220,38,38,0.35)' }}>
@@ -183,10 +194,11 @@ export function ComplaintCard({ report, onChanged, onTrack }) {
         )}
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onTrack && onTrack(d); openGoogleRoute(d); }}
+          onClick={handleRouteClick}
+          disabled={routeLoading}
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11, color: 'var(--transactions)', fontWeight: 700, cursor: 'pointer' }}
         >
-          🧭 المسار (Google)
+          {routeLoading ? '⏳ جارٍ التحديد...' : '🧭 المسار (Google)'}
         </button>
         <button
           type="button"
