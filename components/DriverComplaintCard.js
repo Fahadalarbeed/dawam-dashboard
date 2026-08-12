@@ -30,9 +30,20 @@ export function buildMapsUrl(d) {
 }
 
 export async function openGoogleRoute(d) {
-  const addressText = buildAddressText(d);
   try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(addressText)}`, {
+    const streetPart = [d.block ? `Block ${d.block}` : '', d.street ? `Street ${d.street}` : ''].filter(Boolean).join(' ');
+    const params = new URLSearchParams({
+      format: 'json',
+      limit: '1',
+      countrycodes: 'kw',
+      viewbox: '46.5,30.1,48.6,28.5',
+      bounded: '1',
+      country: 'Kuwait',
+    });
+    if (streetPart) params.set('street', streetPart);
+    if (d.area) params.set('city', d.area);
+
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
       headers: { 'Accept-Language': 'ar' },
     });
     const results = await res.json();
