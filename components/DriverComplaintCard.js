@@ -19,6 +19,8 @@ export function buildAddressText(d) {
     d.area || '',
     d.block ? `Block ${d.block}` : '',
     d.street ? `Street ${d.street}` : '',
+    d.avenue ? `Avenue ${d.avenue}` : '',
+    d.building ? `Plot ${d.building}` : '',
     d.house ? `House ${d.house}` : '',
     'Kuwait',
   ].filter(Boolean).join(', ');
@@ -31,7 +33,7 @@ export function buildMapsUrl(d) {
 
 export async function openGoogleRoute(d) {
   try {
-    const streetPart = [d.block ? `Block ${d.block}` : '', d.street ? `Street ${d.street}` : ''].filter(Boolean).join(' ');
+    const streetPart = [d.block ? `Block ${d.block}` : '', d.street ? `Street ${d.street}` : '', d.avenue ? `Avenue ${d.avenue}` : '', d.building ? `Plot ${d.building}` : '', d.house ? `House ${d.house}` : ''].filter(Boolean).join(' ');
     const params = new URLSearchParams({
       format: 'json',
       limit: '1',
@@ -153,7 +155,7 @@ export function ComplaintCard({ report, onChanged, onTrack }) {
   const [routeLoading, setRouteLoading] = useState(false);
   const d = report.data || {};
   const isClosed = d.status === 'closed';
-  const addressParts = [d.area, d.block ? `قطعة ${d.block}` : '', d.street ? `شارع ${d.street}` : '', d.house ? `منزل ${d.house}` : ''].filter(Boolean).join(' — ');
+  const addressParts = [d.area, d.block ? `قطعة ${d.block}` : '', d.street ? `شارع ${d.street}` : '', d.avenue ? `جادة ${d.avenue}` : '', d.building ? `قسيمة ${d.building}` : '', d.house ? `منزل ${d.house}` : ''].filter(Boolean).join(' — ');
 
   async function handleRouteClick(e) {
     e.stopPropagation();
