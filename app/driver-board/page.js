@@ -172,7 +172,7 @@ function DriverStatsSection({ reports }) {
                       {isOpen && (
                         <div style={{ padding: '0 14px 14px' }}>
                           {s.items.map((it, i) => {
-                            const addr = [it.block ? `قطعة ${it.block}` : '', it.street ? `شارع ${it.street}` : '', it.house ? `منزل ${it.house}` : ''].filter(Boolean).join(' — ');
+                            const addr = [it.block ? `قطعة ${it.block}` : '', it.street ? `شارع ${it.street}` : '', it.avenue ? `جادة ${it.avenue}` : '', it.building ? `قسيمة ${it.building}` : '', it.house ? `منزل ${it.house}` : ''].filter(Boolean).join(' — ');
                             const durLabel = it.durationHours < 1 ? `${Math.round(it.durationHours * 60)} دقيقة` : `${it.durationHours.toFixed(1)} ساعة`;
                             return (
                               <div key={i} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px', marginBottom: 6 }}>
@@ -267,7 +267,7 @@ function AreaStatsSection({ reports }) {
                         <div style={{ padding: '0 14px 14px' }}>
                           {s.items.map((it, i) => {
                             const durLabel = it.durationHours < 1 ? `${Math.round(it.durationHours * 60)} دقيقة` : `${it.durationHours.toFixed(1)} ساعة`;
-                            const addr = [it.block ? `قطعة ${it.block}` : '', it.street ? `شارع ${it.street}` : '', it.house ? `منزل ${it.house}` : ''].filter(Boolean).join(' — ');
+                            const addr = [it.block ? `قطعة ${it.block}` : '', it.street ? `شارع ${it.street}` : '', it.avenue ? `جادة ${it.avenue}` : '', it.building ? `قسيمة ${it.building}` : '', it.house ? `منزل ${it.house}` : ''].filter(Boolean).join(' — ');
                             return (
                               <div key={i} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px', marginBottom: 6 }}>
                                 <div style={{ fontSize: 12, fontWeight: 700 }}>{addr || 'بدون تفاصيل'}</div>
