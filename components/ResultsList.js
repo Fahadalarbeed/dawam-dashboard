@@ -5,6 +5,7 @@ import { downloadBlob, sharePdf, mergePdfBlobs } from '../lib/pdf';
 import { buildMergedDailyDoc, buildMergedMetersDoc, buildMergedFaultsDoc } from '../lib/templates';
 import { htmlToPdfBlob } from '../lib/pdf';
 import MetricsChart from './MetricsChart';
+import ReportPhotosModal, { reportHasPhotos } from './ReportPhotos';
 
 function fmtDate(iso) {
   const d = new Date(iso);
@@ -18,6 +19,7 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
   const [confirmId, setConfirmId] = useState(null);
   const [busy, setBusy] = useState(false);
   const [showChart, setShowChart] = useState(false);
+  const [photosReport, setPhotosReport] = useState(null);
 
   async function handleOpen(r) {
     try {
@@ -176,6 +178,9 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
             <div style={{ fontSize: 11, color: 'var(--text-muted)' }} className="mono">{fmtDate(r.report_date)}</div>
           </div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            {reportHasPhotos(r) && (
+              <button onClick={() => setPhotosReport(r)} title="عرض الصور" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 15 }}>📷</button>
+            )}
             <button onClick={() => handleShare(r)} title="مشاركة" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 15 }}>📤</button>
             {isAdmin && (
               <button onClick={() => setConfirmId(r.id)} title="حذف" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 15 }}>✕</button>
@@ -195,6 +200,10 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
             </div>
           </div>
         </div>
+      )}
+
+      {photosReport && (
+        <ReportPhotosModal report={photosReport} onClose={() => setPhotosReport(null)} />
       )}
     </div>
   );
