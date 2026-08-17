@@ -46,22 +46,22 @@ const FIELD_LABELS = [
 ];
 
 const CATEGORY_DEFS = [
-  { key: 'internal', label: 'بلاغ داخلي', color: '#5B6FE0', match: (a) => a === 'عطل داخلي' },
-  { key: 'stationFuse', label: 'فيوزات محطة', color: '#0E9AA8', match: (a) => a === 'فيوز محطة' || a === 'فيوز UDS' },
-  { key: 'kitkatFuse', label: 'فيوزات المنزل', color: '#E8A33D', match: (a) => ['فيوز 100A', 'فيوز 160A', 'فيوز 200A', 'فيوز 250A', 'فيوز 300A'].includes(a) },
-  { key: 'burntMeter', label: 'عداد محترق', color: '#1E3A6E', match: (a) => a === 'عداد محروق' },
-  { key: 'burntBase', label: 'تبديل قاعدة', color: '#B45309', match: (a) => a === 'قاعدة محترقة' },
+  { key: 'internal', label: 'بلاغ داخلي', color: '#5B6FE0', match: (a) => (a||'').startsWith('عطل داخلي') },
+  { key: 'stationFuse', label: 'فيوزات محطة', color: '#0E9AA8', match: (a) => (a||'').startsWith('فيوز محطة') || (a||'').startsWith('فيوز UDS') },
+  { key: 'kitkatFuse', label: 'فيوزات المنزل', color: '#E8A33D', match: (a) => (a||'').startsWith('فيوز منزل') },
+  { key: 'burntMeter', label: 'عداد محترق', color: '#1E3A6E', match: (a) => (a||'').startsWith('عداد محروق') },
+  { key: 'burntBase', label: 'تبديل قاعدة', color: '#B45309', match: (a) => (a||'').startsWith('قاعدة محترقة') },
 ];
 
 const METRIC_DEFS = [
   { key: 'complaints', label: 'عدد البلاغات', match: () => true },
-  { key: 'kitkatFuses', label: 'فيوزات المنزل', match: (a) => ['فيوز 100A', 'فيوز 160A', 'فيوز 200A', 'فيوز 250A', 'فيوز 300A'].includes(a) },
-  { key: 'stationFuses', label: 'تبديل فيوزات محطة/محول UDS', match: (a) => a === 'فيوز محطة' || a === 'فيوز UDS' },
-  { key: 'lvCables', label: 'اعطال كيبلات ضغط منخفض', match: (a) => a === 'عطل كيبل' },
-  { key: 'htFaults', label: 'اعطال HT', match: (a) => a === 'عطل HT' || a === 'محول طافي' },
-  { key: 'burntBase', label: 'تبديل قاعدة محترقة', match: (a) => a === 'قاعدة محترقة' },
-  { key: 'burntMeters', label: 'احتراق عدادات', match: (a) => a === 'عداد محروق' },
-  { key: 'internalReports', label: 'بلاغات أعطال داخلية', match: (a) => a === 'عطل داخلي' },
+  { key: 'kitkatFuses', label: 'فيوزات المنزل', match: (a) => (a||'').startsWith('فيوز منزل') },
+  { key: 'stationFuses', label: 'تبديل فيوزات محطة/محول UDS', match: (a) => (a||'').startsWith('فيوز محطة') || (a||'').startsWith('فيوز UDS') },
+  { key: 'lvCables', label: 'اعطال كيبلات ضغط منخفض', match: (a) => (a||'').startsWith('عطل كيبل') },
+  { key: 'htFaults', label: 'اعطال HT', match: (a) => (a||'').startsWith('عطل HT') || (a||'').startsWith('محول / UDS') || (a||'').startsWith('محطة طافية') },
+  { key: 'burntBase', label: 'تبديل قاعدة محترقة', match: (a) => (a||'').startsWith('قاعدة محترقة') },
+  { key: 'burntMeters', label: 'احتراق عدادات', match: (a) => (a||'').startsWith('عداد محروق') },
+  { key: 'internalReports', label: 'بلاغات أعطال داخلية', match: (a) => (a||'').startsWith('عطل داخلي') },
 ];
 
 function buildMapsUrl(d) {
@@ -141,6 +141,7 @@ export default function ComplaintsPage() {
   const [searchBuilding, setSearchBuilding] = useState('');
   const [searchHouse, setSearchHouse] = useState('');
   const [searchPaci, setSearchPaci] = useState('');
+  const [searchPhone, setSearchPhone] = useState('');
   const [searchAction, setSearchAction] = useState('');
   const [showAllComplaints, setShowAllComplaints] = useState(false);
 
@@ -464,7 +465,7 @@ export default function ComplaintsPage() {
     try {
       const data = await searchReports({
         from, to, type: 'complaints',
-        area: searchArea || 'all', block: searchBlock, street: searchStreet, building: searchBuilding, house: searchHouse, paci: searchPaci, action: searchAction,
+        area: searchArea || 'all', block: searchBlock, street: searchStreet, building: searchBuilding, house: searchHouse, paci: searchPaci, action: searchAction, phone: searchPhone,
       });
       setSearchResults(data);
     } catch (e) {
@@ -997,6 +998,7 @@ export default function ComplaintsPage() {
           <div className="field" style={{ marginTop: 0 }}><label>القسيمة</label><input type="text" value={searchBuilding} onChange={(e) => setSearchBuilding(e.target.value)} placeholder="بحث بالقسيمة" /></div>
           <div className="field" style={{ marginTop: 0 }}><label>المنزل</label><input type="text" value={searchHouse} onChange={(e) => setSearchHouse(e.target.value)} placeholder="بحث بالمنزل" /></div>
           <div className="field" style={{ marginTop: 0, gridColumn: '1 / -1' }}><label>الرقم الآلي (PACI)</label><input type="text" value={searchPaci} onChange={(e) => setSearchPaci(e.target.value)} placeholder="بحث بالرقم الآلي" /></div>
+          <div className="field" style={{ marginTop: 0, gridColumn: '1 / -1' }}><label>رقم الهاتف</label><input type="tel" value={searchPhone} onChange={(e) => setSearchPhone(e.target.value)} placeholder="بحث برقم الهاتف" /></div>
           <div className="field" style={{ marginTop: 0, gridColumn: '1 / -1' }}>
             <label>الإجراء</label>
             <select value={searchAction} onChange={(e) => setSearchAction(e.target.value)}>
