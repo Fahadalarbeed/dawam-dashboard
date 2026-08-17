@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { FAULT_FIELDS, METER_FIELDS } from '../lib/constants';
-import { updateReportData, downloadReportPdf } from '../lib/reportsApi';
+import { updateReportData, downloadReportPdf, downloadReportPhoto } from '../lib/reportsApi';
 import { downloadBlob, sharePdf } from '../lib/pdf';
 import { playAlertTone } from '../lib/alertSound';
 
@@ -11,6 +11,44 @@ function fmtDateTime(iso) {
   if (!iso) return '';
   const d = new Date(iso);
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} — ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function PhotoDisplay({ label, icon, path }) {
+  const [url, setUrl] = useState(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let objectUrl;
+    let cancelled = false;
+    (async () => {
+      try {
+        const blob = await downloadReportPhoto(path);
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setUrl(objectUrl);
+      } catch (e) {
+        console.error(e);
+        if (!cancelled) setError(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [path]);
+
+  return (
+    <div>
+      <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 3 }}>{icon} {label}</label>
+      {error ? (
+        <div style={{ fontSize: 11, color: 'var(--danger)' }}>تعذر تحميل الصورة</div>
+      ) : !url ? (
+        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>جارٍ التحميل...</div>
+      ) : (
+        <img src={url} alt={label} style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid var(--border)' }} />
+      )}
+    </div>
+  );
 }
 
 function PreviewModal({ report, onClose, onSaved }) {
@@ -69,19 +107,13 @@ function PreviewModal({ report, onClose, onSaved }) {
               </div>
             ))}
           </div>
-          {report.type === 'meters' && (report.data.meterPhoto || report.data.idCardPhoto) && (
+          {report.type === 'meters' && (report.data.meterPhotoPath || report.data.idCardPhotoPath) && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 14 }}>
-              {report.data.meterPhoto && (
-                <div>
-                  <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 3 }}>📷 صورة العداد</label>
-                  <img src={report.data.meterPhoto} alt="صورة العداد" style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid var(--border)' }} />
-                </div>
+              {report.data.meterPhotoPath && (
+                <PhotoDisplay label="صورة العداد" icon="📷" path={report.data.meterPhotoPath} />
               )}
-              {report.data.idCardPhoto && (
-                <div>
-                  <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 3 }}>🪪 صورة البطاقة المدنية</label>
-                  <img src={report.data.idCardPhoto} alt="صورة البطاقة المدنية" style={{ maxWidth: '100%', borderRadius: 8, border: '1px solid var(--border)' }} />
-                </div>
+              {report.data.idCardPhotoPath && (
+                <PhotoDisplay label="صورة البطاقة المدنية" icon="🪪" path={report.data.idCardPhotoPath} />
               )}
             </div>
           )}
