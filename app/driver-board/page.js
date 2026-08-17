@@ -21,7 +21,7 @@ function computeDriverMonthlyStats(closedReports, monthKey) {
   const grouped = {};
   thisMonth.forEach((r) => {
     const d = r.data || {};
-    const driver = d.driver || 'بدون سائق';
+    const driver = d.driver || 'بدون فني';
     if (!grouped[driver]) grouped[driver] = { total: 0, within1h: 0, within2h: 0, over2h: 0, items: [], byArea: {} };
     const created = new Date(d.createdAt);
     const closed = new Date(d.closedAt);
@@ -119,8 +119,8 @@ function DriverStatsSection({ reports }) {
         borderRadius: 12, padding: '14px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
       }}>
         <div style={{ fontSize: 22 }}>📊</div>
-        <div style={{ fontSize: 13.5, fontWeight: 700 }}>إحصائية السواق الشهرية</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>عدد البلاغات المغلقة ووقت الإغلاق لكل سائق</div>
+        <div style={{ fontSize: 13.5, fontWeight: 700 }}>إحصائية الفنيين الشهرية</div>
+        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>عدد البلاغات المغلقة ووقت الإغلاق لكل فني</div>
       </button>
 
       {show && (
@@ -149,7 +149,7 @@ function DriverStatsSection({ reports }) {
                     <div key={driver} className="card" style={{ marginBottom: 10, padding: 0, overflow: 'hidden' }}>
                       <div onClick={() => setExpandedDriver(isOpen ? null : driver)} style={{ padding: 14, cursor: 'pointer' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--transactions)' }}>🚗 {driver}</div>
+                          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--transactions)' }}>🔧 {driver}</div>
                           <div className="mono" style={{ fontSize: 18, fontWeight: 800, color: 'var(--complaints)' }}>{s.total}</div>
                         </div>
                         <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
@@ -272,7 +272,7 @@ function AreaStatsSection({ reports }) {
                               <div key={i} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px', marginBottom: 6 }}>
                                 <div style={{ fontSize: 12, fontWeight: 700 }}>{addr || 'بدون تفاصيل'}</div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
-                                  <span style={{ background: 'var(--transactions-bg)', color: 'var(--transactions)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5, fontWeight: 700 }}>🚗 {it.driver || 'بدون سائق'}</span>
+                                  <span style={{ background: 'var(--transactions-bg)', color: 'var(--transactions)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5, fontWeight: 700 }}>🔧 {it.driver || 'بدون فني'}</span>
                                   <span style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5 }}>🕐 إنشاء: {fmtDateTime(it.createdAt)}</span>
                                   <span style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5 }}>🔒 إغلاق: {fmtDateTime(it.closedAt)}</span>
                                   <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5, fontWeight: 700 }}>⏱️ {durLabel}</span>
@@ -338,7 +338,7 @@ function TrackingMapSection() {
       const center = entries.length > 0 ? { lat: entries[0][1].lat, lng: entries[0][1].lng } : { lat: 29.3759, lng: 47.9774 };
       mapInstanceRef.current = new window.google.maps.Map(mapRef.current, { center, zoom: entries.length > 0 ? 12 : 11 });
       updateMarkers();
-      setStatus(entries.length > 0 ? `✓ ${entries.length} سائق أونلاين` : 'لا يوجد سواق أونلاين حاليًا');
+      setStatus(entries.length > 0 ? `✓ ${entries.length} فني أونلاين` : 'لا يوجد فنيين أونلاين حاليًا');
     } catch (e) {
       setStatus('✗ ' + e.message);
     }
@@ -359,7 +359,7 @@ function TrackingMapSection() {
           label: { text: driver.slice(0, 2), color: '#fff' },
         });
         const info = new window.google.maps.InfoWindow({
-          content: `<div style="font-family:Cairo,sans-serif;direction:rtl;"><b>🚗 ${driver}</b><br><small>${fmtDateTime(loc.updated_at)}</small></div>`,
+          content: `<div style="font-family:Cairo,sans-serif;direction:rtl;"><b>🔧 ${driver}</b><br><small>${fmtDateTime(loc.updated_at)}</small></div>`,
         });
         marker.addListener('click', () => info.open(mapInstanceRef.current, marker));
         markersRef.current[driver] = { marker, info };
@@ -371,7 +371,7 @@ function TrackingMapSection() {
         delete markersRef.current[driver];
       }
     });
-    setStatus(entries.length > 0 ? `✓ ${entries.length} سائق أونلاين` : 'لا يوجد سواق أونلاين حاليًا');
+    setStatus(entries.length > 0 ? `✓ ${entries.length} فني أونلاين` : 'لا يوجد فنيين أونلاين حاليًا');
   }
 
   useEffect(() => {
@@ -388,8 +388,8 @@ function TrackingMapSection() {
     <div className="card" style={{ marginTop: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>🗺️ خريطة تتبع السواق الحيّة</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>موقع كل سائق عنده بلاغ نشط، لحظة بلحظة</div>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>🗺️ خريطة تتبع الفنيين الحيّة</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>موقع كل فني عنده بلاغ نشط، لحظة بلحظة</div>
         </div>
         {apiKey && (
           <button onClick={() => setApiKey('')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 16, cursor: 'pointer' }} title="تغيير مفتاح API">
@@ -415,12 +415,12 @@ function TrackingMapSection() {
 
       <div style={{ marginTop: 14 }}>
         {Object.entries(liveLocations).length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)' }}>لا يوجد سواق أونلاين — التتبع يشتغل تلقائيًا عند أي سائق عنده بلاغ نشط وفاتح صفحة السواق بجواله</div>
+          <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)' }}>لا يوجد فنيين أونلاين — التتبع يشتغل تلقائيًا عند أي فني عنده بلاغ نشط وفاتح صفحة الفنيين بجواله</div>
         ) : (
           Object.entries(liveLocations).map(([driver, loc]) => (
             <div key={driver} className="card" style={{ marginBottom: 8, padding: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--transactions)' }}>🚗 {driver}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: 'var(--transactions)' }}>🔧 {driver}</div>
                 <div style={{ fontSize: 10.5, color: 'var(--text-muted)' }}>{fmtDateTime(loc.updated_at)}</div>
               </div>
             </div>
@@ -488,7 +488,7 @@ export default function DriverBoardInternalPage() {
         <button className="btn-secondary" style={{ marginTop: 0, width: 'auto', padding: '10px 16px' }} onClick={() => router.push('/dashboard')}>
           → رجوع
         </button>
-        <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>لوحة السواق (داخلي)</h1>
+        <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>لوحة الفنيين (داخلي)</h1>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
