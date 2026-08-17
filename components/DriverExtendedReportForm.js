@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { FAULT_FIELDS, METER_FIELDS } from '../lib/constants';
 import { buildFaultDoc, buildMeterDoc } from '../lib/templates';
 import { htmlToPdfBlob } from '../lib/pdf';
-import { insertReport, uploadReportPdf, updateReportData } from '../lib/reportsApi';
+import { insertReport, uploadReportPdf, updateReportData, uploadReportPhoto } from '../lib/reportsApi';
 import { playAlertTone } from '../lib/alertSound';
 
 function pad(n) { return String(n).padStart(2, '0'); }
@@ -87,16 +87,16 @@ function PhotoField({ label, icon, value, onChange }) {
               const file = e.target.files[0];
               if (!file) return;
               const reader = new FileReader();
-              reader.onload = () => onChange(reader.result);
+              reader.onload = () => onChange({ file, previewUrl: reader.result });
               reader.readAsDataURL(file);
             }}
           />
         </label>
       ) : (
         <div style={{ position: 'relative', marginTop: 6 }}>
-          <img src={value} alt={label} style={{ width: '100%', borderRadius: 12, border: '1px solid var(--border)', display: 'block' }} />
+          <img src={value.previewUrl} alt={label} style={{ width: '100%', borderRadius: 12, border: '1px solid var(--border)', display: 'block' }} />
           <button
-            type="button" onClick={() => onChange('')}
+            type="button" onClick={() => onChange(null)}
             style={{ position: 'absolute', top: 6, left: 6, background: 'rgba(220,38,38,0.9)', color: '#fff', border: 'none', borderRadius: 20, width: 26, height: 26, fontSize: 13, cursor: 'pointer' }}
           >✕</button>
         </div>
@@ -109,8 +109,8 @@ function ExtendedReportInner({ complaint, action, driverName, onSubmitted, onCan
   const complaintData = complaint.data || {};
   const { reportType, fields, init } = buildInitialData(complaintData, action);
   const [data, setData] = useState(init);
-  const [meterPhoto, setMeterPhoto] = useState('');
-  const [idCardPhoto, setIdCardPhoto] = useState('');
+  const [meterPhoto, setMeterPhoto] = useState(null);
+  const [idCardPhoto, setIdCardPhoto] = useState(null);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -127,6 +127,10 @@ function ExtendedReportInner({ complaint, action, driverName, onSubmitted, onCan
       const id = crypto.randomUUID();
       const pdfPath = await uploadReportPdf(id, reportType, blob);
 
+      let meterPhotoPath, idCardPhotoPath;
+      if (meterPhoto?.file) meterPhotoPath = await uploadReportPhoto(id, 'meter', meterPhoto.file);
+      if (idCardPhoto?.file) idCardPhotoPath = await uploadReportPhoto(id, 'idcard', idCardPhoto.file);
+
       await insertReport({
         id,
         type: reportType,
@@ -135,8 +139,8 @@ function ExtendedReportInner({ complaint, action, driverName, onSubmitted, onCan
         period_key: null,
         data: {
           ...fullData,
-          meterPhoto: meterPhoto || undefined,
-          idCardPhoto: idCardPhoto || undefined,
+          meterPhotoPath: meterPhotoPath || undefined,
+          idCardPhotoPath: idCardPhotoPath || undefined,
           pendingApproval: true,
           submittedByDriver: driverName || '',
           sourceComplaintId: complaint.id,
