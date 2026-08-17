@@ -49,7 +49,7 @@ export default function DriversPublicPage() {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'reports', filter: 'type=eq.complaints' }, (payload) => {
         const d = payload.new?.data || {};
         playAlertTone('new');
-        showBrowserNotification('🚨 بلاغ جديد', `السائق: ${d.driver || 'غير محدد'} — ${d.area || ''}`);
+        showBrowserNotification('🚨 بلاغ جديد', `الفني: ${d.driver || 'غير محدد'} — ${d.area || ''}`);
         loadReportsRef.current && loadReportsRef.current();
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'reports', filter: 'type=eq.complaints' }, () => {
@@ -163,7 +163,7 @@ export default function DriversPublicPage() {
     return (
       <div className="wrap">
         <header style={{ marginBottom: 22 }}>
-          <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>لوحة السواق</h1>
+          <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>لوحة الفنيين</h1>
         </header>
         <div className="card">
           <div className="field" style={{ marginTop: 0 }}>
@@ -184,8 +184,8 @@ export default function DriversPublicPage() {
   return (
     <div className="wrap">
       <header style={{ marginBottom: 22, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>لوحة السواق</h1>
-        <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>🚗 {myName}</span>
+        <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>لوحة الفنيين</h1>
+        <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>🔧 {myName}</span>
       </header>
 
       {gpsStatus && (
