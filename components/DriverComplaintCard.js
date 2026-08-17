@@ -1,8 +1,9 @@
 'use client';
 import { useState } from 'react';
-import { COMPLAINT_ACTIONS } from '../lib/constants';
+import { COMPLAINT_ACTIONS, ACTIONS_WITH_SIZE, ACTION_SIZE_OPTIONS } from '../lib/constants';
 import { updateReportData, searchReports } from '../lib/reportsApi';
 import { supabase } from '../lib/supabaseClient';
+import DriverExtendedReportForm, { resolveExtendedReport } from './DriverExtendedReportForm';
 
 export function pad(n) { return String(n).padStart(2, '0'); }
 export function todayStr() {
@@ -78,20 +79,42 @@ export async function openKuwaitFinder(paci) {
 export function CloseForm({ report, onClosed, onTrack }) {
   const [action, setAction] = useState(COMPLAINT_ACTIONS[0]);
   const [otherAction, setOtherAction] = useState('');
+  const [size, setSize] = useState('');
+  const [choice, setChoice] = useState(null);
   const [station, setStation] = useState('');
   const [unitNo, setUnitNo] = useState('');
+  const [transNo, setTransNo] = useState('');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+
+  const needsSize = ACTIONS_WITH_SIZE.includes(action);
+  const sizeOptions = ACTION_SIZE_OPTIONS[action] || [];
+  const effectiveSize = needsSize ? (size || sizeOptions[0]) : null;
+  const resolution = resolveExtendedReport(action, effectiveSize);
+  const hideUnitNo = action === 'محطة طافية' || action === 'محول / UDS';
+  const showTransNo = action === 'محول / UDS';
+
+  function handleActionChange(value) {
+    setAction(value);
+    setSize('');
+    setChoice(null);
+  }
+  function handleSizeChange(value) {
+    setSize(value);
+    setChoice(null);
+  }
 
   async function handleClose() {
     setSaving(true);
     try {
-      const finalAction = action === 'أخرى' ? (otherAction || 'أخرى') : action;
+      const finalAction = (action === 'أخرى' ? (otherAction || 'أخرى') : action) + (needsSize && effectiveSize ? ` (${effectiveSize})` : '');
       await updateReportData(report.id, {
         status: 'closed',
         action: finalAction,
+        actionSize: needsSize ? effectiveSize : '',
         station,
         unitNo,
+        transNo,
         note: note || '',
         closedAt: new Date().toISOString(),
       });
@@ -117,11 +140,15 @@ export function CloseForm({ report, onClosed, onTrack }) {
     }
   }
 
+  const showExtended = resolution === 'yes' || (resolution === 'ask' && choice === 'extended');
+  const showAsk = resolution === 'ask' && !choice;
+  const showSimple = resolution === 'no' || (resolution === 'ask' && choice === 'simple');
+
   return (
     <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
       <div className="field" style={{ marginTop: 0 }}>
         <label>الإجراء</label>
-        <select value={action} onChange={(e) => setAction(e.target.value)}>
+        <select value={action} onChange={(e) => handleActionChange(e.target.value)}>
           {COMPLAINT_ACTIONS.map((a) => <option key={a} value={a}>{a}</option>)}
         </select>
       </div>
@@ -131,26 +158,64 @@ export function CloseForm({ report, onClosed, onTrack }) {
           <input type="text" value={otherAction} onChange={(e) => setOtherAction(e.target.value)} placeholder="اكتب نوع الإجراء" />
         </div>
       )}
-      <div className="field">
-        <label>المحطة أو UDS</label>
-        <input type="text" value={station} onChange={(e) => setStation(e.target.value)} placeholder="رقم المحطة أو UDS" />
-      </div>
-      <div className="field">
-        <label>اليونت</label>
-        <input type="text" value={unitNo} onChange={(e) => setUnitNo(e.target.value)} placeholder="رقم اليونت" />
-      </div>
-      <div className="field">
-        <label>ملاحظة (اختياري)</label>
-        <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="أي ملاحظة إضافية عن الإغلاق" />
-      </div>
-      <button className="btn-primary" onClick={handleClose} disabled={saving}>
-        {saving ? 'جارٍ الإغلاق...' : '🔒 تأكيد إغلاق البلاغ'}
-      </button>
+      {needsSize && (
+        <div className="field">
+          <label>الحجم</label>
+          <select value={effectiveSize} onChange={(e) => handleSizeChange(e.target.value)}>
+            {sizeOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      )}
+
+      {showAsk && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          <button type="button" className="btn-secondary" style={{ flex: 1, marginTop: 0 }} onClick={() => setChoice('simple')}>🔧 تبديل</button>
+          <button type="button" className="btn-primary" style={{ flex: 1, marginTop: 0 }} onClick={() => setChoice('extended')}>📋 عمل تقرير كامل</button>
+        </div>
+      )}
+
+      {showExtended && (
+        <DriverExtendedReportForm
+          complaint={report}
+          action={action}
+          driverName={report.data?.driver}
+          onSubmitted={onClosed}
+          onCancel={() => setChoice('simple')}
+        />
+      )}
+
+      {showSimple && (
+        <>
+          <div className="field">
+            <label>المحطة أو UDS</label>
+            <input type="text" value={station} onChange={(e) => setStation(e.target.value)} placeholder="رقم المحطة أو UDS" />
+          </div>
+          {!hideUnitNo && (
+            <div className="field">
+              <label>اليونت</label>
+              <input type="text" value={unitNo} onChange={(e) => setUnitNo(e.target.value)} placeholder="رقم اليونت" />
+            </div>
+          )}
+          {showTransNo && (
+            <div className="field">
+              <label>رقم المحول</label>
+              <input type="text" value={transNo} onChange={(e) => setTransNo(e.target.value)} placeholder="رقم المحول" />
+            </div>
+          )}
+          <div className="field">
+            <label>ملاحظة (اختياري)</label>
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="أي ملاحظة إضافية عن الإغلاق" />
+          </div>
+          <button className="btn-primary" onClick={handleClose} disabled={saving}>
+            {saving ? 'جارٍ الإغلاق...' : '🔒 تأكيد إغلاق البلاغ'}
+          </button>
+        </>
+      )}
     </div>
   );
 }
 
-export function ComplaintCard({ report, onChanged, onTrack }) {
+export function ComplaintCard({ report, onChanged, onTrack, onDismiss }) {
   const [expanded, setExpanded] = useState(false);
   const [routeLoading, setRouteLoading] = useState(false);
   const d = report.data || {};
@@ -172,13 +237,25 @@ export function ComplaintCard({ report, onChanged, onTrack }) {
     <div className="card" style={{ marginBottom: 10, borderColor: isClosed ? 'var(--border)' : 'rgba(220,38,38,0.35)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
         <div style={{ fontSize: 13.5, fontWeight: 700 }}>{addressParts || 'بدون عنوان'}</div>
-        <span style={{
-          background: isClosed ? 'var(--transactions-bg)' : 'var(--complaints-bg)',
-          color: isClosed ? 'var(--transactions)' : 'var(--complaints)',
-          borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
-        }}>
-          {isClosed ? '✅ مغلق' : '🟠 نشط'}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{
+            background: isClosed ? 'var(--transactions-bg)' : 'var(--complaints-bg)',
+            color: isClosed ? 'var(--transactions)' : 'var(--complaints)',
+            borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
+          }}>
+            {isClosed ? '✅ مغلق' : '🟠 نشط'}
+          </span>
+          {isClosed && onDismiss && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onDismiss(report.id); }}
+              title="إخفاء هذا البلاغ"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, width: 26, height: 26, cursor: 'pointer', fontSize: 13, color: 'var(--transactions)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              ✓
+            </button>
+          )}
+        </div>
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
@@ -203,6 +280,11 @@ export function ComplaintCard({ report, onChanged, onTrack }) {
         {isClosed && d.unitNo && (
           <span style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11 }}>
             اليونت: {d.unitNo}
+          </span>
+        )}
+        {isClosed && d.transNo && (
+          <span style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11 }}>
+            رقم المحول: {d.transNo}
           </span>
         )}
         <button
@@ -250,23 +332,53 @@ export function groupByDriver(list) {
   return Object.entries(grouped).sort((a, b) => b[1].length - a[1].length);
 }
 
+function getDismissedIds() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem('dismissed_complaints') || '[]'));
+  } catch (e) {
+    return new Set();
+  }
+}
+function saveDismissedIds(set) {
+  try {
+    localStorage.setItem('dismissed_complaints', JSON.stringify([...set]));
+  } catch (e) { /* ignore */ }
+}
+
 export function DriverGroupBox({ driver, reports, onChanged, onTrack }) {
   const [open, setOpen] = useState(false);
+  const [dismissed, setDismissed] = useState(() => (typeof window !== 'undefined' ? getDismissedIds() : new Set()));
+
+  function handleDismiss(id) {
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      saveDismissedIds(next);
+      return next;
+    });
+  }
+
+  const visibleReports = reports.filter((r) => !dismissed.has(r.id));
+
   return (
     <div className="card" style={{ marginBottom: 10, padding: 0, overflow: 'hidden' }}>
       <div
         onClick={() => setOpen((v) => !v)}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 16, cursor: 'pointer' }}
       >
-        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--transactions)' }}>🚗 {driver}</div>
+        <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--transactions)' }}>🔧 {driver}</div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ background: 'var(--transactions-bg)', color: 'var(--transactions)', borderRadius: 20, padding: '3px 12px', fontSize: 13, fontWeight: 800 }}>{reports.length}</div>
+          <div style={{ background: 'var(--transactions-bg)', color: 'var(--transactions)', borderRadius: 20, padding: '3px 12px', fontSize: 13, fontWeight: 800 }}>{visibleReports.length}</div>
           <span style={{ fontSize: 12, color: 'var(--text-muted)', transform: open ? 'rotate(-90deg)' : 'rotate(0deg)', display: 'inline-block' }}>‹</span>
         </div>
       </div>
       {open && (
         <div style={{ padding: '0 12px 12px' }}>
-          {reports.map((r) => <ComplaintCard key={r.id} report={r} onChanged={onChanged} onTrack={onTrack} />)}
+          {visibleReports.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '14px 10px', color: 'var(--text-muted)', fontSize: 12 }}>ما فيه بلاغات ظاهرة (تم إخفاء الباقي)</div>
+          ) : (
+            visibleReports.map((r) => <ComplaintCard key={r.id} report={r} onChanged={onChanged} onTrack={onTrack} onDismiss={handleDismiss} />)
+          )}
         </div>
       )}
     </div>
