@@ -138,11 +138,13 @@ export default function PendingApprovalSection() {
   async function handleApproveAndShare(report) {
     setBusyId(report.id);
     try {
-      await updateReportData(report.id, { pendingApproval: false });
       const blob = await downloadReportPdf(report.pdf_path);
       const filename = (report.display_name || 'تقرير') + '.pdf';
       const shared = await sharePdf(blob, filename);
       if (!shared) downloadBlob(blob, filename);
+      // do the status update after attempting the share, so the network round-trip
+      // doesn't eat into the browser's short "user activation" window for navigator.share()
+      await updateReportData(report.id, { pendingApproval: false });
       setPending((prev) => prev.filter((r) => r.id !== report.id));
     } catch (e) {
       alert('تعذر الاعتماد أو المشاركة: ' + e.message);
