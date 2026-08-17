@@ -1,11 +1,35 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   FAULT_FIELDS, METER_FIELDS, COMPLAINT_FIELDS, DAILY_PERIODS, DAILY_METRICS,
 } from '../lib/constants';
 import { buildFaultDoc, buildMeterDoc, buildDailyDoc } from '../lib/templates';
 import { htmlToPdfBlob, sharePdf } from '../lib/pdf';
-import { uploadReportPdf, insertReport } from '../lib/reportsApi';
+import { uploadReportPdf, insertReport, searchReports } from '../lib/reportsApi';
+
+function mapActionToMetricKey(action) {
+  if (!action) return null;
+  if (action.startsWith('فيوز منزل')) return 'kitkatFuses';
+  if (action.startsWith('فيوز محطة') || action.startsWith('فيوز UDS')) return 'stationFuses';
+  if (action.startsWith('عطل كيبل')) return 'lvCables';
+  if (action.startsWith('عطل HT') || action.startsWith('محول / UDS') || action.startsWith('محطة طافية')) return 'htFaults';
+  if (action.startsWith('قاعدة محترقة')) return 'burntBase';
+  if (action.startsWith('عداد محروق')) return 'burntMeters';
+  if (action.startsWith('عطل داخلي')) return 'internalReports';
+  return null;
+}
+
+function getShiftRange(reportDate, periodKey) {
+  if (periodKey === 'p1') {
+    return { from: new Date(`${reportDate}T07:00:00`), to: new Date(`${reportDate}T15:00:00`) };
+  }
+  if (periodKey === 'p2') {
+    return { from: new Date(`${reportDate}T15:00:00`), to: new Date(`${reportDate}T23:00:00`) };
+  }
+  const from = new Date(`${reportDate}T23:00:00`);
+  const to = new Date(from.getTime() + 8 * 3600000);
+  return { from, to };
+}
 
 function todayStr() {
   const d = new Date();
@@ -66,6 +90,39 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
   function setMetric(key, value) {
     setData((d) => ({ ...d, metrics: { ...d.metrics, [key]: parseInt(value, 10) || 0 } }));
   }
+
+  const [autoFillStatus, setAutoFillStatus] = useState('');
+
+  const autoFillFromClosedComplaints = useCallback(async (reportDate, periodKey) => {
+    if (!reportDate || !periodKey) return;
+    setAutoFillStatus('⏳ جارٍ التعبئة من البلاغات المسكّرة...');
+    try {
+      const { from, to } = getShiftRange(reportDate, periodKey);
+      const all = await searchReports({ from: '2000-01-01', to: '2100-01-01', type: 'complaints' });
+      const counts = {};
+      DAILY_METRICS.forEach((m) => { counts[m.key] = 0; });
+      all.forEach((r) => {
+        const cd = r.data || {};
+        if (cd.status !== 'closed' || !cd.closedAt) return;
+        const closedAt = new Date(cd.closedAt);
+        if (closedAt < from || closedAt >= to) return;
+        counts.complaints += 1;
+        const metricKey = mapActionToMetricKey(cd.action);
+        if (metricKey) counts[metricKey] += 1;
+      });
+      setData((d) => ({ ...d, metrics: counts }));
+      setAutoFillStatus(`✓ تم التعبئة تلقائيًا من ${counts.complaints} بلاغ مسكّر بهذي الفترة (تقدر تعدّل الأرقام يدويًا لو تبي)`);
+    } catch (e) {
+      setAutoFillStatus('✗ تعذرت التعبئة التلقائية: ' + e.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (type === 'daily' && data.reportDate && data.periodKey) {
+      autoFillFromClosedComplaints(data.reportDate, data.periodKey);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [type, data.reportDate, data.periodKey]);
 
   const title = type === 'faults' ? 'تقرير عطل' : type === 'meters' ? 'تقرير عداد محروق' : type === 'complaints' ? 'بلاغ جديد' : 'التقارير اليومية';
 
@@ -208,6 +265,17 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
               </div>
               <div className="field">
                 <label style={{ color: 'var(--daily)' }}>أرقام الفترة</label>
+                {autoFillStatus && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 8 }}>{autoFillStatus}</div>
+                )}
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ marginTop: 0, marginBottom: 10, width: '100%' }}
+                  onClick={() => autoFillFromClosedComplaints(data.reportDate, data.periodKey)}
+                >
+                  🔄 إعادة التعبئة من البلاغات المسكّرة
+                </button>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   {DAILY_METRICS.map((m) => (
                     <div key={m.key}>
