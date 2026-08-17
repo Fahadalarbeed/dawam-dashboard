@@ -7,6 +7,7 @@ import { searchReports, todaysStats, checkIsAdmin } from '../../lib/reportsApi';
 import ReportModal from '../../components/ReportModal';
 import ResultsList from '../../components/ResultsList';
 import ShiftLeadCard from '../../components/ShiftLeadCard';
+import PendingApprovalSection from '../../components/PendingApprovalSection';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function todayStr() {
@@ -170,6 +171,8 @@ export default function DashboardPage() {
         </div>
       </header>
 
+      <PendingApprovalSection />
+
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
         <div className="card" style={{ borderColor: 'rgba(79,190,141,0.35)', cursor: 'pointer' }} onClick={() => jumpToSearch('all')}>
           <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, fontWeight: 600, minHeight: 34, display: 'flex', alignItems: 'center' }}>عدد المعاملات</div>
@@ -246,8 +249,8 @@ export default function DashboardPage() {
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>الفلاتر والإحصائيات التفصيلية</div>
           </button>
           <button onClick={() => router.push('/driver-board')} style={btnCardStyle('var(--faults)', 'var(--faults-bg)')}>
-            <div style={{ fontSize: 22, marginBottom: 6 }}>🚗</div>
-            <div style={{ fontSize: 13.5, fontWeight: 700 }}>لوحة السواق</div>
+            <div style={{ fontSize: 22, marginBottom: 6 }}>🔧</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700 }}>لوحة الفنيين</div>
             <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>البلاغات النشطة والمغلقة</div>
           </button>
         </div>
