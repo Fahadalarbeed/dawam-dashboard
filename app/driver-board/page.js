@@ -81,26 +81,6 @@ function DriverTimeChart({ within1h, within2h, over2h }) {
   );
 }
 
-function computeAreaMonthlyStats(closedReports, monthKey) {
-  const thisMonth = closedReports.filter((r) => (r.data?.closedAt || '').slice(0, 7) === monthKey);
-  const grouped = {};
-  thisMonth.forEach((r) => {
-    const d = r.data || {};
-    const area = d.area || 'بدون منطقة';
-    if (!grouped[area]) grouped[area] = { total: 0, within1h: 0, within2h: 0, over2h: 0, items: [], totalHours: 0 };
-    const created = new Date(d.createdAt);
-    const closed = new Date(d.closedAt);
-    const hours = (closed - created) / 3600000;
-    grouped[area].total++;
-    grouped[area].totalHours += hours;
-    if (hours <= 1) grouped[area].within1h++;
-    else if (hours <= 2) grouped[area].within2h++;
-    else grouped[area].over2h++;
-    grouped[area].items.push({ ...d, durationHours: hours });
-  });
-  return grouped;
-}
-
 function DriverStatsSection({ reports }) {
   const [show, setShow] = useState(false);
   const [month, setMonth] = useState('');
@@ -179,100 +159,6 @@ function DriverStatsSection({ reports }) {
                                 <div style={{ fontSize: 12, fontWeight: 700 }}>{addr || 'بدون عنوان'}</div>
                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
                                   <span style={{ background: 'var(--transactions-bg)', color: 'var(--transactions)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5, fontWeight: 700 }}>📍 {it.area || 'بدون منطقة'}</span>
-                                  <span style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5 }}>🕐 إنشاء: {fmtDateTime(it.createdAt)}</span>
-                                  <span style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5 }}>🔒 إغلاق: {fmtDateTime(it.closedAt)}</span>
-                                  <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5, fontWeight: 700 }}>⏱️ {durLabel}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AreaStatsSection({ reports }) {
-  const [show, setShow] = useState(false);
-  const [month, setMonth] = useState('');
-  const [expandedArea, setExpandedArea] = useState(null);
-
-  const closedReports = useMemo(() => (reports || []).filter((r) => r.data?.status === 'closed' && r.data?.closedAt), [reports]);
-  const months = useMemo(() => [...new Set(closedReports.map((r) => r.data.closedAt.slice(0, 7)))].sort((a, b) => b.localeCompare(a)), [closedReports]);
-  const effectiveMonth = months.includes(month) ? month : (months[0] || '');
-  const grouped = useMemo(() => computeAreaMonthlyStats(closedReports, effectiveMonth), [closedReports, effectiveMonth]);
-  // sort by slowest average closing time first — this directly answers "which areas take longest"
-  const areaNames = Object.keys(grouped).sort((a, b) => (grouped[b].totalHours / grouped[b].total) - (grouped[a].totalHours / grouped[a].total));
-
-  return (
-    <div className="card" style={{ marginTop: 14 }}>
-      <button onClick={() => setShow((v) => !v)} className="new-report-btn" style={{
-        width: '100%', textAlign: 'center', background: 'var(--surface-2)', border: '1px solid rgba(180,83,9,0.35)',
-        borderRadius: 12, padding: '14px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-      }}>
-        <div style={{ fontSize: 22 }}>🗺️</div>
-        <div style={{ fontSize: 13.5, fontWeight: 700 }}>إحصائية المناطق الشهرية</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>أي المناطق تطول فيها مدة التسكير</div>
-      </button>
-
-      {show && (
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-          {months.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)' }}>لا توجد بلاغات مغلقة بعد</div>
-          ) : (
-            <>
-              <div className="field" style={{ marginTop: 0 }}>
-                <label>اختر الشهر</label>
-                <select value={effectiveMonth} onChange={(e) => { setMonth(e.target.value); setExpandedArea(null); }}>
-                  {months.map((m) => {
-                    const [y, mo] = m.split('-');
-                    return <option key={m} value={m}>{ARABIC_MONTHS[parseInt(mo, 10) - 1]} {y}</option>;
-                  })}
-                </select>
-              </div>
-
-              {areaNames.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)' }}>لا توجد بلاغات مغلقة بهذا الشهر</div>
-              ) : (
-                areaNames.map((area, idx) => {
-                  const s = grouped[area];
-                  const isOpen = expandedArea === area;
-                  const avgHours = s.totalHours / s.total;
-                  const avgLabel = avgHours < 1 ? `${Math.round(avgHours * 60)} دقيقة` : `${avgHours.toFixed(1)} ساعة`;
-                  return (
-                    <div key={area} className="card" style={{ marginBottom: 10, padding: 0, overflow: 'hidden' }}>
-                      <div onClick={() => setExpandedArea(isOpen ? null : area)} style={{ padding: 14, cursor: 'pointer' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: idx === 0 ? 'var(--danger)' : 'var(--transactions)' }}>
-                            {idx === 0 ? '🔺 ' : ''}📍 {area}
-                          </div>
-                          <div style={{ textAlign: 'left' }}>
-                            <div className="mono" style={{ fontSize: 16, fontWeight: 800, color: 'var(--complaints)' }}>{s.total}</div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>متوسط: {avgLabel}</div>
-                          </div>
-                        </div>
-                        <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
-                          <DriverTimeChart within1h={s.within1h} within2h={s.within2h} over2h={s.over2h} />
-                        </div>
-                      </div>
-                      {isOpen && (
-                        <div style={{ padding: '0 14px 14px' }}>
-                          {s.items.map((it, i) => {
-                            const durLabel = it.durationHours < 1 ? `${Math.round(it.durationHours * 60)} دقيقة` : `${it.durationHours.toFixed(1)} ساعة`;
-                            const addr = [it.block ? `قطعة ${it.block}` : '', it.street ? `شارع ${it.street}` : '', it.avenue ? `جادة ${it.avenue}` : '', it.building ? `قسيمة ${it.building}` : '', it.house ? `منزل ${it.house}` : ''].filter(Boolean).join(' — ');
-                            return (
-                              <div key={i} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px', marginBottom: 6 }}>
-                                <div style={{ fontSize: 12, fontWeight: 700 }}>{addr || 'بدون تفاصيل'}</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
-                                  <span style={{ background: 'var(--transactions-bg)', color: 'var(--transactions)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5, fontWeight: 700 }}>🔧 {it.driver || 'بدون فني'}</span>
                                   <span style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5 }}>🕐 إنشاء: {fmtDateTime(it.createdAt)}</span>
                                   <span style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5 }}>🔒 إغلاق: {fmtDateTime(it.closedAt)}</span>
                                   <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5, fontWeight: 700 }}>⏱️ {durLabel}</span>
@@ -518,10 +404,7 @@ export default function DriverBoardInternalPage() {
         ))
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-        <DriverStatsSection reports={reports} />
-        <AreaStatsSection reports={reports} />
-      </div>
+      <DriverStatsSection reports={reports} />
       <TrackingMapSection />
     </div>
   );
