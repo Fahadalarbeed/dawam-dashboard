@@ -189,8 +189,6 @@ export default function DriversPublicPage() {
         <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>🔧 {myName}</span>
       </header>
 
-      <TechnicianRevisionSection driverName={myName} />
-
       {gpsStatus && (
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>{gpsStatus}</div>
       )}
@@ -204,6 +202,8 @@ export default function DriversPublicPage() {
       {pushStatus && (
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 14 }}>{pushStatus}</div>
       )}
+
+      <TechnicianRevisionSection driverName={myName} />
 
       {!reports ? (
         <div className="card"><div style={{ textAlign: 'center', padding: '30px 10px', color: 'var(--text-muted)' }}>جارٍ التحميل...</div></div>
