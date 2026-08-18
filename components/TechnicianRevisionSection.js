@@ -174,17 +174,19 @@ export default function TechnicianRevisionSection({ driverName }) {
   if (reports.length === 0) return null;
 
   return (
-    <div className="card" style={{ marginBottom: 14, borderColor: 'rgba(220,38,38,0.4)' }}>
-      <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px', color: 'var(--danger)' }}>
-        ↩️ تقارير تحتاج تعديل ({reports.length})
-      </h2>
+    <>
       {reports.map((r) => {
         const d = r.data || {};
         const isMeter = r.type === 'meters';
         return (
-          <div key={r.id} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, marginBottom: 10 }}>
-            <div style={{ fontSize: 13, fontWeight: 800 }}>{isMeter ? '📟 تقرير عداد محروق' : '⚠️ تقرير عطل'}</div>
-            <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>{d.area || ''} {d.block ? `— قطعة ${d.block}` : ''}</div>
+          <div key={r.id} className="card" style={{ marginBottom: 10, borderColor: 'rgba(220,38,38,0.35)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700 }}>{isMeter ? '📟 تقرير عداد محروق' : '⚠️ تقرير عطل'} — {d.area || 'بدون منطقة'}</div>
+              <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>
+                ↩️ يحتاج تعديل
+              </span>
+            </div>
+            <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 4 }}>{d.block ? `قطعة ${d.block}` : ''} {d.street ? `— شارع ${d.street}` : ''}</div>
             {d.revisionNote && (
               <div style={{ fontSize: 11.5, color: 'var(--danger)', marginTop: 8, background: 'rgba(220,38,38,0.08)', borderRadius: 8, padding: '6px 8px' }}>
                 ⚠️ سبب الإرجاع: {d.revisionNote}
@@ -200,6 +202,6 @@ export default function TechnicianRevisionSection({ driverName }) {
           </div>
         );
       })}
-    </div>
+    </>
   );
 }
