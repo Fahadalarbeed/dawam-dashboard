@@ -219,22 +219,6 @@ function ExtendedReportInner({ complaint, action, driverName, onSubmitted, onCan
   );
 }
 
-export default function DriverExtendedReportForm({ complaint, action, size, driverName, onSubmitted, onCancel }) {
-  const resolution = resolveExtendedReport(action, size);
-  const [choice, setChoice] = useState(null);
-
-  if (resolution === 'no') return null;
-
-  if (resolution === 'ask' && !choice) {
-    return (
-      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button type="button" className="btn-secondary" style={{ flex: 1, marginTop: 0 }} onClick={() => onCancel && onCancel()}>🔧 تبديل</button>
-          <button type="button" className="btn-primary" style={{ flex: 1, marginTop: 0 }} onClick={() => setChoice('extended')}>📋 عمل تقرير كامل</button>
-        </div>
-      </div>
-    );
-  }
-
+export default function DriverExtendedReportForm({ complaint, action, driverName, onSubmitted, onCancel }) {
   return <ExtendedReportInner complaint={complaint} action={action} driverName={driverName} onSubmitted={onSubmitted} onCancel={onCancel} />;
 }
