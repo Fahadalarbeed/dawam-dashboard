@@ -144,7 +144,7 @@ export default function PendingApprovalSection() {
         .eq('data->>pendingApproval', 'true')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      setPending(data || []);
+      setPending((data || []).filter((r) => r.data?.needsRevision !== true));
     } catch (e) {
       console.error(e);
     } finally {
@@ -197,6 +197,21 @@ export default function PendingApprovalSection() {
     }
   }
 
+  async function handleReturnToTechnician(report) {
+    const reason = prompt('وش سبب إرجاع التقرير؟ (مثلاً: الصورة غير واضحة، بيانات خاطئة)');
+    if (reason === null) return; // cancelled
+    setBusyId(report.id);
+    try {
+      await updateReportData(report.id, { needsRevision: true, revisionNote: reason || '' });
+      playAlertTone('closed');
+      setPending((prev) => prev.filter((r) => r.id !== report.id));
+    } catch (e) {
+      alert('تعذر إرجاع التقرير: ' + e.message);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (loading || pending.length === 0) return null;
 
   return (
@@ -229,12 +244,15 @@ export default function PendingApprovalSection() {
                   📝 {d.notes}
                 </div>
               )}
-              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
                 <button className="btn-secondary" style={{ marginTop: 0, width: 'auto', padding: '0 14px' }} onClick={() => setPreviewReport(r)} disabled={busyId === r.id}>
                   👁️ معاينة
                 </button>
                 <button className="btn-primary" style={{ marginTop: 0, flex: 1 }} onClick={() => handleApproveAndShare(r)} disabled={busyId === r.id}>
                   {busyId === r.id ? 'جارٍ...' : '✅ اعتماد ومشاركة واتساب'}
+                </button>
+                <button className="btn-secondary" style={{ marginTop: 0, width: 'auto', padding: '0 14px', color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => handleReturnToTechnician(r)} disabled={busyId === r.id}>
+                  ↩️ إرجاع للفني
                 </button>
                 <button className="btn-secondary" style={{ marginTop: 0, width: 'auto', padding: '0 14px' }} onClick={() => handleDismiss(r)} disabled={busyId === r.id}>
                   إخفاء
