@@ -5,6 +5,7 @@ import { DRIVERS_LIST } from '../../lib/constants';
 import { searchReports } from '../../lib/reportsApi';
 import { groupByDriver, DriverGroupBox } from '../../components/DriverComplaintCard';
 import { playAlertTone, requestNotificationPermission, showBrowserNotification } from '../../lib/alertSound';
+import TechnicianRevisionSection from '../../components/TechnicianRevisionSection';
 
 function urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -187,6 +188,8 @@ export default function DriversPublicPage() {
         <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>لوحة الفنيين</h1>
         <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>🔧 {myName}</span>
       </header>
+
+      <TechnicianRevisionSection driverName={myName} />
 
       {gpsStatus && (
         <div style={{ fontSize: 11.5, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>{gpsStatus}</div>
