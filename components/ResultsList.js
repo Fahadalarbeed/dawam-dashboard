@@ -6,6 +6,7 @@ import { buildMergedDailyDoc, buildMergedMetersDoc, buildMergedFaultsDoc } from 
 import { htmlToPdfBlob } from '../lib/pdf';
 import MetricsChart from './MetricsChart';
 import ReportPhotosModal, { reportHasPhotos } from './ReportPhotos';
+import ReportPreviewModal from './ReportPreviewModal';
 
 function fmtDate(iso) {
   const d = new Date(iso);
@@ -20,6 +21,7 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
   const [busy, setBusy] = useState(false);
   const [showChart, setShowChart] = useState(false);
   const [photosReport, setPhotosReport] = useState(null);
+  const [previewReport, setPreviewReport] = useState(null);
 
   async function handleOpen(r) {
     try {
@@ -178,6 +180,7 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
             <div style={{ fontSize: 11, color: 'var(--text-muted)' }} className="mono">{fmtDate(r.report_date)}</div>
           </div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+            <button onClick={() => setPreviewReport(r)} title="معاينة" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 15 }}>👁️</button>
             {reportHasPhotos(r) && (
               <button onClick={() => setPhotosReport(r)} title="عرض الصور" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 15 }}>📷</button>
             )}
@@ -204,6 +207,9 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
 
       {photosReport && (
         <ReportPhotosModal report={photosReport} onClose={() => setPhotosReport(null)} />
+      )}
+      {previewReport && (
+        <ReportPreviewModal report={previewReport} onClose={() => setPreviewReport(null)} />
       )}
     </div>
   );
