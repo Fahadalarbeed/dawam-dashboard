@@ -16,20 +16,38 @@ import { loadGoogleMaps, getSavedApiKey } from '../../lib/googleMapsLoader';
 
 const ARABIC_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 
+function speedScoreFor(hours) {
+  if (hours <= 1) return 100;
+  if (hours <= 2) return 75;
+  if (hours <= 3) return 50;
+  return 25;
+}
+
+function computeDriverRating(stats) {
+  const avgSpeedScore = stats.totalSpeedScore / stats.total;
+  const VOLUME_TARGET = 20; // complaints/month considered "full marks" for volume
+  const volumeScore = Math.min(100, (stats.total / VOLUME_TARGET) * 100);
+  const rating = avgSpeedScore * 0.8 + volumeScore * 0.2;
+  return { rating: Math.round(rating), avgSpeedScore: Math.round(avgSpeedScore), avgHours: stats.totalHours / stats.total };
+}
+
 function computeDriverMonthlyStats(closedReports, monthKey) {
   const thisMonth = closedReports.filter((r) => (r.data?.closedAt || '').slice(0, 7) === monthKey);
   const grouped = {};
   thisMonth.forEach((r) => {
     const d = r.data || {};
     const driver = d.driver || 'بدون فني';
-    if (!grouped[driver]) grouped[driver] = { total: 0, within1h: 0, within2h: 0, over2h: 0, items: [], byArea: {} };
+    if (!grouped[driver]) grouped[driver] = { total: 0, within1h: 0, within2h: 0, within3h: 0, over3h: 0, items: [], byArea: {}, totalSpeedScore: 0, totalHours: 0 };
     const created = new Date(d.createdAt);
     const closed = new Date(d.closedAt);
     const hours = (closed - created) / 3600000;
     grouped[driver].total++;
+    grouped[driver].totalHours += hours;
+    grouped[driver].totalSpeedScore += speedScoreFor(hours);
     if (hours <= 1) grouped[driver].within1h++;
     else if (hours <= 2) grouped[driver].within2h++;
-    else grouped[driver].over2h++;
+    else if (hours <= 3) grouped[driver].within3h++;
+    else grouped[driver].over3h++;
     grouped[driver].items.push({ ...d, durationHours: hours });
     const area = d.area || 'بدون منطقة';
     if (!grouped[driver].byArea[area]) grouped[driver].byArea[area] = { count: 0, totalHours: 0 };
@@ -39,7 +57,7 @@ function computeDriverMonthlyStats(closedReports, monthKey) {
   return grouped;
 }
 
-function DriverTimeChart({ within1h, within2h, over2h }) {
+function DriverTimeChart({ within1h, within2h, within3h, over3h }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
 
@@ -53,10 +71,10 @@ function DriverTimeChart({ within1h, within2h, over2h }) {
       chartRef.current = new Chart(canvasRef.current.getContext('2d'), {
         type: 'bar',
         data: {
-          labels: ['≤ ساعة', '≤ ساعتين', 'أكثر من ساعتين'],
+          labels: ['≤ ساعة', '≤ ساعتين', '≤ ٣ ساعات', 'أكثر من ٣'],
           datasets: [{
-            data: [within1h, within2h, over2h],
-            backgroundColor: ['#22C55E', '#F59E0B', '#DC2626'],
+            data: [within1h, within2h, within3h, over3h],
+            backgroundColor: ['#22C55E', '#84CC16', '#F59E0B', '#DC2626'],
             borderRadius: 6,
           }],
         },
@@ -72,7 +90,7 @@ function DriverTimeChart({ within1h, within2h, over2h }) {
       });
     })();
     return () => { destroyed = true; if (chartRef.current) chartRef.current.destroy(); };
-  }, [within1h, within2h, over2h]);
+  }, [within1h, within2h, within3h, over3h]);
 
   return (
     <div style={{ height: 110 }}>
@@ -90,7 +108,7 @@ function DriverStatsSection({ reports }) {
   const months = useMemo(() => [...new Set(closedReports.map((r) => r.data.closedAt.slice(0, 7)))].sort((a, b) => b.localeCompare(a)), [closedReports]);
   const effectiveMonth = months.includes(month) ? month : (months[0] || '');
   const grouped = useMemo(() => computeDriverMonthlyStats(closedReports, effectiveMonth), [closedReports, effectiveMonth]);
-  const driverNames = Object.keys(grouped).sort((a, b) => grouped[b].total - grouped[a].total);
+  const driverNames = Object.keys(grouped).sort((a, b) => computeDriverRating(grouped[b]).rating - computeDriverRating(grouped[a]).rating);
 
   return (
     <div className="card" style={{ marginTop: 14 }}>
@@ -124,16 +142,26 @@ function DriverStatsSection({ reports }) {
               ) : (
                 driverNames.map((driver) => {
                   const s = grouped[driver];
+                  const { rating, avgHours } = computeDriverRating(s);
+                  const avgLabelTop = avgHours < 1 ? `${Math.round(avgHours * 60)} دقيقة` : `${avgHours.toFixed(1)} ساعة`;
+                  const ratingColor = rating >= 80 ? '#22C55E' : rating >= 60 ? '#F59E0B' : '#DC2626';
                   const isOpen = expandedDriver === driver;
                   return (
                     <div key={driver} className="card" style={{ marginBottom: 10, padding: 0, overflow: 'hidden' }}>
                       <div onClick={() => setExpandedDriver(isOpen ? null : driver)} style={{ padding: 14, cursor: 'pointer' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--transactions)' }}>🔧 {driver}</div>
-                          <div className="mono" style={{ fontSize: 18, fontWeight: 800, color: 'var(--complaints)' }}>{s.total}</div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ textAlign: 'center' }}>
+                              <div className="mono" style={{ fontSize: 18, fontWeight: 800, color: ratingColor }}>{rating}٪</div>
+                              <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>التقييم</div>
+                            </div>
+                            <div className="mono" style={{ fontSize: 18, fontWeight: 800, color: 'var(--complaints)' }}>{s.total}</div>
+                          </div>
                         </div>
+                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>⏱️ متوسط سرعة الإغلاق: {avgLabelTop}</div>
                         <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
-                          <DriverTimeChart within1h={s.within1h} within2h={s.within2h} over2h={s.over2h} />
+                          <DriverTimeChart within1h={s.within1h} within2h={s.within2h} within3h={s.within3h} over3h={s.over3h} />
                         </div>
                         <div style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 700, marginTop: 10, marginBottom: 4 }}>حسب المنطقة:</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
