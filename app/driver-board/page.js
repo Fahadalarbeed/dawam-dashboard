@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef, Fragment } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../../lib/supabaseClient';
 import { searchReports } from '../../lib/reportsApi';
@@ -140,65 +140,79 @@ function DriverStatsSection({ reports }) {
               {driverNames.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)' }}>لا توجد بلاغات مغلقة بهذا الشهر</div>
               ) : (
-                driverNames.map((driver) => {
-                  const s = grouped[driver];
-                  const { rating, avgHours } = computeDriverRating(s);
-                  const avgLabelTop = avgHours < 1 ? `${Math.round(avgHours * 60)} دقيقة` : `${avgHours.toFixed(1)} ساعة`;
-                  const ratingColor = rating >= 80 ? '#22C55E' : rating >= 60 ? '#F59E0B' : '#DC2626';
-                  const isOpen = expandedDriver === driver;
-                  return (
-                    <div key={driver} className="card" style={{ marginBottom: 10, padding: 0, overflow: 'hidden' }}>
-                      <div onClick={() => setExpandedDriver(isOpen ? null : driver)} style={{ padding: 14, cursor: 'pointer' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ fontSize: 15, fontWeight: 800, color: 'var(--transactions)' }}>🔧 {driver}</div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                            <div style={{ textAlign: 'center' }}>
-                              <div className="mono" style={{ fontSize: 18, fontWeight: 800, color: ratingColor }}>{rating}٪</div>
-                              <div style={{ fontSize: 9, color: 'var(--text-muted)' }}>التقييم</div>
-                            </div>
-                            <div className="mono" style={{ fontSize: 18, fontWeight: 800, color: 'var(--complaints)' }}>{s.total}</div>
-                          </div>
-                        </div>
-                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 4 }}>⏱️ متوسط سرعة الإغلاق: {avgLabelTop}</div>
-                        <div style={{ marginTop: 8 }} onClick={(e) => e.stopPropagation()}>
-                          <DriverTimeChart within1h={s.within1h} within2h={s.within2h} within3h={s.within3h} over3h={s.over3h} />
-                        </div>
-                        <div style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 700, marginTop: 10, marginBottom: 4 }}>حسب المنطقة:</div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          {Object.entries(s.byArea).sort((a, b) => b[1].count - a[1].count).map(([area, info]) => {
-                            const avgHours = info.totalHours / info.count;
-                            const avgLabel = avgHours < 1 ? `${Math.round(avgHours * 60)} د` : `${avgHours.toFixed(1)} س`;
-                            return (
-                              <div key={area} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7, padding: '4px 8px', fontSize: 10.5 }}>
-                                <span style={{ fontWeight: 700, color: 'var(--transactions)' }}>📍 {area}</span>
-                                <span style={{ color: 'var(--text-muted)' }}>{info.count} بلاغ — متوسط ⏱️ {avgLabel}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      {isOpen && (
-                        <div style={{ padding: '0 14px 14px' }}>
-                          {s.items.map((it, i) => {
-                            const addr = [it.block ? `قطعة ${it.block}` : '', it.street ? `شارع ${it.street}` : '', it.avenue ? `جادة ${it.avenue}` : '', it.building ? `قسيمة ${it.building}` : '', it.house ? `منزل ${it.house}` : ''].filter(Boolean).join(' — ');
-                            const durLabel = it.durationHours < 1 ? `${Math.round(it.durationHours * 60)} دقيقة` : `${it.durationHours.toFixed(1)} ساعة`;
-                            return (
-                              <div key={i} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px', marginBottom: 6 }}>
-                                <div style={{ fontSize: 12, fontWeight: 700 }}>{addr || 'بدون عنوان'}</div>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
-                                  <span style={{ background: 'var(--transactions-bg)', color: 'var(--transactions)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5, fontWeight: 700 }}>📍 {it.area || 'بدون منطقة'}</span>
-                                  <span style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5 }}>🕐 إنشاء: {fmtDateTime(it.createdAt)}</span>
-                                  <span style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5 }}>🔒 إغلاق: {fmtDateTime(it.closedAt)}</span>
-                                  <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5, fontWeight: 700 }}>⏱️ {durLabel}</span>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid var(--border)' }}>
+                        <th style={{ textAlign: 'right', padding: '8px 6px', fontSize: 10.5, color: 'var(--text-muted)' }}>الفني</th>
+                        <th style={{ textAlign: 'center', padding: '8px 6px', fontSize: 10.5, color: 'var(--text-muted)' }}>البلاغات</th>
+                        <th style={{ textAlign: 'center', padding: '8px 6px', fontSize: 10.5, color: 'var(--text-muted)' }}>متوسط الإصلاح</th>
+                        <th style={{ textAlign: 'center', padding: '8px 6px', fontSize: 10.5, color: 'var(--text-muted)' }}>النسبة</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {driverNames.map((driver) => {
+                        const s = grouped[driver];
+                        const { rating, avgHours } = computeDriverRating(s);
+                        const avgLabelTop = avgHours < 1 ? `${Math.round(avgHours * 60)} د` : `${avgHours.toFixed(1)} س`;
+                        const ratingColor = rating >= 80 ? '#22C55E' : rating >= 60 ? '#F59E0B' : '#DC2626';
+                        const isOpen = expandedDriver === driver;
+                        return (
+                          <Fragment key={driver}>
+                            <tr
+                              onClick={() => setExpandedDriver(isOpen ? null : driver)}
+                              style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', background: isOpen ? 'var(--surface-2)' : 'transparent' }}
+                            >
+                              <td style={{ padding: '10px 6px', fontWeight: 700, color: 'var(--transactions)' }}>🔧 {driver}</td>
+                              <td style={{ padding: '10px 6px', textAlign: 'center' }} className="mono">{s.total}</td>
+                              <td style={{ padding: '10px 6px', textAlign: 'center' }} className="mono">{avgLabelTop}</td>
+                              <td style={{ padding: '10px 6px', textAlign: 'center', fontWeight: 800, color: ratingColor }} className="mono">{rating}٪</td>
+                            </tr>
+                            {isOpen && (
+                              <tr>
+                                <td colSpan={4} style={{ padding: '12px 6px', background: 'var(--surface-2)' }}>
+                                  <div onClick={(e) => e.stopPropagation()}>
+                                    <DriverTimeChart within1h={s.within1h} within2h={s.within2h} within3h={s.within3h} over3h={s.over3h} />
+                                    <div style={{ fontSize: 10.5, color: 'var(--text-muted)', fontWeight: 700, marginTop: 10, marginBottom: 4 }}>حسب المنطقة:</div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                      {Object.entries(s.byArea).sort((a, b) => b[1].count - a[1].count).map(([area, info]) => {
+                                        const areaAvgHours = info.totalHours / info.count;
+                                        const areaAvgLabel = areaAvgHours < 1 ? `${Math.round(areaAvgHours * 60)} د` : `${areaAvgHours.toFixed(1)} س`;
+                                        return (
+                                          <div key={area} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '4px 8px', fontSize: 10.5 }}>
+                                            <span style={{ fontWeight: 700, color: 'var(--transactions)' }}>📍 {area}</span>
+                                            <span style={{ color: 'var(--text-muted)' }}>{info.count} بلاغ — متوسط ⏱️ {areaAvgLabel}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                    <div style={{ marginTop: 10 }}>
+                                      {s.items.map((it, i) => {
+                                        const addr = [it.block ? `قطعة ${it.block}` : '', it.street ? `شارع ${it.street}` : '', it.avenue ? `جادة ${it.avenue}` : '', it.building ? `قسيمة ${it.building}` : '', it.house ? `منزل ${it.house}` : ''].filter(Boolean).join(' — ');
+                                        const durLabel = it.durationHours < 1 ? `${Math.round(it.durationHours * 60)} دقيقة` : `${it.durationHours.toFixed(1)} ساعة`;
+                                        return (
+                                          <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 10px', marginBottom: 6 }}>
+                                            <div style={{ fontSize: 12, fontWeight: 700 }}>{addr || 'بدون عنوان'}</div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 6 }}>
+                                              <span style={{ background: 'var(--transactions-bg)', color: 'var(--transactions)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5, fontWeight: 700 }}>📍 {it.area || 'بدون منطقة'}</span>
+                                              <span style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5 }}>🕐 إنشاء: {fmtDateTime(it.createdAt)}</span>
+                                              <span style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5 }}>🔒 إغلاق: {fmtDateTime(it.closedAt)}</span>
+                                              <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 6, padding: '2px 7px', fontSize: 10.5, fontWeight: 700 }}>⏱️ {durLabel}</span>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </>
           )}
