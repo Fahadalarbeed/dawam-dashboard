@@ -1,8 +1,10 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import {
-  FAULT_FIELDS, METER_FIELDS, COMPLAINT_FIELDS, DAILY_PERIODS, DAILY_METRICS,
+  FAULT_FIELDS, METER_FIELDS, COMPLAINT_FIELDS, DAILY_PERIODS, DAILY_METRICS, DRIVERS_LIST,
 } from '../lib/constants';
+import { autoAssignDriver } from '../lib/assignment';
+import { getCurrentShiftLetter } from '../lib/shift';
 import { buildFaultDoc, buildMeterDoc, buildDailyDoc } from '../lib/templates';
 import { htmlToPdfBlob, sharePdf } from '../lib/pdf';
 import { uploadReportPdf, insertReport, searchReports } from '../lib/reportsApi';
@@ -51,6 +53,9 @@ function FieldInput({ field, value, onChange }) {
   if (field.type === 'textarea') {
     return <textarea value={value ?? ''} onChange={(e) => onChange(e.target.value)} />;
   }
+  if (field.type === 'autodriver') {
+    return <input type="text" value={value ?? ''} readOnly style={{ opacity: 0.75 }} />;
+  }
   return (
     <input
       type={field.type}
@@ -63,17 +68,20 @@ function FieldInput({ field, value, onChange }) {
 export default function ReportModal({ type, currentUser, onClose, onSaved }) {
   const fields = type === 'faults' ? FAULT_FIELDS : type === 'meters' ? METER_FIELDS : type === 'complaints' ? COMPLAINT_FIELDS : null;
 
+  const userLabel = currentUser?.email || '';
   const initial = {};
   if (fields) {
     fields.forEach((f) => {
-      if (f.type === 'date') initial[f.key] = todayStr();
+      if (f.key === 'shift') initial[f.key] = getCurrentShiftLetter();
+      else if (f.key === 'employeeName' || f.key === 'preparedBy') initial[f.key] = userLabel;
+      else if (f.type === 'date') initial[f.key] = todayStr();
       else if (f.type === 'select') initial[f.key] = f.options[0];
       else initial[f.key] = '';
     });
   } else {
     initial.reportDate = todayStr();
     initial.periodKey = 'p1';
-    initial.preparedBy = '';
+    initial.preparedBy = userLabel;
     initial.notes = '';
     initial.metrics = {};
     DAILY_METRICS.forEach((m) => { initial.metrics[m.key] = 0; });
@@ -83,6 +91,27 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
   const [status, setStatus] = useState({ text: '', kind: '' });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(null); // { blob, filename }
+  const [allComplaints, setAllComplaints] = useState([]);
+  const [manualDriver, setManualDriver] = useState('');
+
+  // Current workload is needed to pick a technician, so load it once when a complaint form opens.
+  useEffect(() => {
+    if (type !== 'complaints') return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const rows = await searchReports({ from: '2000-01-01', to: '2100-01-01', type: 'complaints' });
+        if (!cancelled) setAllComplaints(rows || []);
+      } catch (e) {
+        console.error('could not load workload for assignment', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [type]);
+
+  const suggestedDriver = type === 'complaints' && data.area
+    ? autoAssignDriver(allComplaints, data.area)
+    : null;
 
   function setField(key, value) {
     setData((d) => ({ ...d, [key]: value }));
@@ -131,9 +160,18 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
     setStatus({ text: '', kind: '' });
     try {
       if (type === 'complaints') {
-        const displayName = `بلاغ - ${data.area || 'بدون منطقة'} - ${data.driver || 'بدون سائق'}`.trim();
+        // Manual pick always wins; otherwise the engine assigns, and an empty result
+        // means the complaint is queued until a technician frees up.
+        const assigned = manualDriver || autoAssignDriver(allComplaints, data.area) || '';
+        const displayName = `بلاغ - ${data.area || 'بدون منطقة'} - ${assigned || 'بانتظار التعيين'}`.trim();
         const id = crypto.randomUUID();
-        const complaintData = { ...data, status: 'active', createdAt: new Date().toISOString() };
+        const complaintData = {
+          ...data,
+          driver: assigned,
+          manualAssign: !!manualDriver,
+          status: 'active',
+          createdAt: new Date().toISOString(),
+        };
         await insertReport({
           id,
           type,
@@ -159,7 +197,7 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
           }).catch((e) => console.error('notify-driver failed', e));
         }
         setSaved({ done: true });
-        setStatus({ text: 'تم حفظ البلاغ بنجاح ✓', kind: 'ok' });
+        setStatus({ text: assigned ? 'تم حفظ البلاغ بنجاح ✓' : 'تم حفظ البلاغ — بانتظار توفّر فني ⏳', kind: 'ok' });
         onSaved && onSaved();
         return;
       }
@@ -239,11 +277,26 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
           {fields && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {fields.map((f) => (
-                <div className="field" key={f.key} style={{ marginTop: 8, gridColumn: f.type === 'textarea' ? '1 / -1' : 'auto' }}>
+                <div className="field" key={f.key} style={{ marginTop: 8, gridColumn: f.type === 'autodriver' || f.type === 'textarea' ? '1 / -1' : 'auto' }}>
                   <label style={{ fontSize: 10.5 }}>{f.label}</label>
-                  <FieldInput field={f} value={data[f.key]} onChange={(v) => setField(f.key, v)} />
+                  <FieldInput
+                    field={f}
+                    value={f.type === 'autodriver'
+                      ? (manualDriver ? `${manualDriver} (يدوي)` : (suggestedDriver || 'بانتظار توفّر فني ⏳'))
+                      : data[f.key]}
+                    onChange={(v) => setField(f.key, v)}
+                  />
                 </div>
               ))}
+              {type === 'complaints' && (
+                <div className="field" style={{ marginTop: 8, gridColumn: '1 / -1' }}>
+                  <label style={{ fontSize: 10.5 }}>تعيين فني يدويًا (اختياري)</label>
+                  <select value={manualDriver} onChange={(e) => setManualDriver(e.target.value)}>
+                    <option value="">— تلقائي —</option>
+                    {DRIVERS_LIST.map((d) => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
           )}
 
