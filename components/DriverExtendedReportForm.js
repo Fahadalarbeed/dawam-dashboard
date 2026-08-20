@@ -5,6 +5,7 @@ import { buildFaultDoc, buildMeterDoc } from '../lib/templates';
 import { htmlToPdfBlob } from '../lib/pdf';
 import { insertReport, uploadReportPdf, updateReportData, uploadReportPhoto } from '../lib/reportsApi';
 import { playAlertTone } from '../lib/alertSound';
+import { getCurrentShiftLetter } from '../lib/shift';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function todayStr() {
@@ -16,20 +17,6 @@ function nowTimeStr() {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-const SHIFT_BASE_ORDER = ['أ', 'ب', 'ج', 'هـ', 'د'];
-const SHIFT_LETTER_MAP = { 'أ': 'A', 'ب': 'B', 'ج': 'C', 'هـ': 'D', 'د': 'E' };
-// NOTE: mirrors the rotation logic used by ShiftLeadCard; keep in sync if that logic changes.
-function getCurrentShiftLetter() {
-  try {
-    const epoch = new Date('2024-01-01T00:00:00');
-    const now = new Date();
-    const daysSince = Math.floor((now - epoch) / 86400000);
-    const idx = daysSince % SHIFT_BASE_ORDER.length;
-    return SHIFT_LETTER_MAP[SHIFT_BASE_ORDER[idx]] || 'A';
-  } catch (e) {
-    return 'A';
-  }
-}
 
 const ACTION_TO_REPORT_TYPE = {
   'عداد محروق': 'meters',
