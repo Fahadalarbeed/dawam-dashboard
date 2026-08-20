@@ -7,6 +7,8 @@ import { searchReports, deleteReport, checkIsAdmin } from '../../lib/reportsApi'
 import { buildRepeatedComplaintsDoc, buildRepeatedStationsDoc, buildMetricsFilterDoc, buildMergedComplaintsDoc } from '../../lib/templates';
 import { htmlToPdfBlob, downloadBlob, sharePdf } from '../../lib/pdf';
 import SimpleBarChart from '../../components/SimpleBarChart';
+import DriverStatsSection from '../../components/DriverStatsSection';
+import ReportModal from '../../components/ReportModal';
 
 function fmtDate(iso) {
   if (!iso) return '';
@@ -78,8 +80,20 @@ function MapLink({ d }) {
 }
 
 function addressKey(d) {
-  if (!d.area || !d.block || !d.street || !d.house) return null;
-  return `${d.area} — قطعة ${d.block} — شارع ${d.street} — منزل ${d.house}`;
+  if (!d.area || !d.block || !d.street) return null;
+  const unit = d.house ? `منزل ${d.house}` : (d.building ? `قسيمة ${d.building}` : null);
+  if (!unit) return null;
+  return `${d.area} — قطعة ${d.block} — شارع ${d.street} — ${unit}`;
+}
+
+// Only these actions count toward "repeated outage" totals.
+function isHouseRepeatAction(a) {
+  a = a || '';
+  return a.startsWith('فيوز منزل') || a.startsWith('عداد ذكي');
+}
+function isStationRepeatAction(a) {
+  a = a || '';
+  return a.startsWith('فيوز محطة') || a.startsWith('قاطع محطة');
 }
 const ARABIC_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 function monthLabel(monthKey) {
@@ -105,6 +119,8 @@ function stationCandidates(d) {
 
 export default function ComplaintsPage() {
   const router = useRouter();
+  const [showNewComplaint, setShowNewComplaint] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [complaints, setComplaints] = useState(null);
@@ -156,6 +172,7 @@ export default function ComplaintsPage() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       if (!data.session) { router.replace('/login'); return; }
+      setCurrentUser(data.session.user);
       setCheckingAuth(false);
       checkIsAdmin(data.session.user.id).then(setIsAdmin);
     });
@@ -296,7 +313,9 @@ export default function ComplaintsPage() {
       : complaints;
     const groups = {};
     source.forEach((r) => {
-      const key = addressKey(r.data || {});
+      const d = r.data || {};
+      if (!isHouseRepeatAction(d.action)) return;
+      const key = addressKey(d);
       if (!key) return;
       if (!groups[key]) groups[key] = [];
       groups[key].push(r.data || {});
@@ -314,6 +333,7 @@ export default function ComplaintsPage() {
       : complaints;
     const groups = {};
     source.forEach((r) => {
+      if (!isStationRepeatAction(r.data?.action)) return;
       const candidates = stationCandidates(r.data || {});
       candidates.forEach((c) => {
         if (!groups[c.key]) groups[c.key] = { fieldLabel: c.fieldLabel, value: c.value, area: c.area, unit: c.unit, items: [] };
@@ -496,12 +516,19 @@ export default function ComplaintsPage() {
 
   return (
     <div className="wrap">
-      <header style={{ marginBottom: 22, display: 'flex', alignItems: 'center', gap: 12 }}>
-        <button className="btn-secondary" style={{ marginTop: 0, width: 'auto', padding: '10px 16px' }} onClick={() => router.push('/dashboard')}>
-          → رجوع
-        </button>
-        <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>إحصائية البلاغات</h1>
+      <header style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button className="back-circle" onClick={() => router.push('/dashboard')} title="رجوع">→</button>
+        <h1 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>البلاغات</h1>
       </header>
+
+      <div className="card" style={{ marginBottom: 14 }}>
+        <div className="circle-row" style={{ gridTemplateColumns: '1fr' }}>
+          <button className="circle-btn complaints" onClick={() => setShowNewComplaint(true)}>
+            <span className="circle-btn-ring">📝</span>
+            <span className="circle-btn-label">إنشاء بلاغ جديد</span>
+          </button>
+        </div>
+      </div>
 
       {complaints && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 14 }}>
@@ -650,7 +677,7 @@ export default function ComplaintsPage() {
           borderRadius: 12, padding: '12px 6px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
         }}>
           <div style={{ fontSize: 20 }}>🔁</div>
-          <div style={{ fontSize: 12, fontWeight: 700 }}>البلاغات المتكررة</div>
+          <div style={{ fontSize: 12, fontWeight: 700 }}>انقطاعات متكررة منازل</div>
           <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{repeatedEntries.length > 0 ? `${repeatedEntries.length} عنوان متكرر` : 'اضغط للعرض'}</div>
         </button>
         <button onClick={() => setShowStationRepeated((v) => !v)} style={{
@@ -658,7 +685,7 @@ export default function ComplaintsPage() {
           borderRadius: 12, padding: '12px 6px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
         }}>
           <div style={{ fontSize: 20 }}>🏭</div>
-          <div style={{ fontSize: 12, fontWeight: 700 }}>بلاغات متكررة محطات</div>
+          <div style={{ fontSize: 12, fontWeight: 700 }}>انقطاعات متكررة محطات</div>
           <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{stationRepeatedEntries.length > 0 ? `${stationRepeatedEntries.length} محطة/UDS متكررة` : 'اضغط للعرض'}</div>
         </button>
       </div>
@@ -1098,6 +1125,8 @@ export default function ComplaintsPage() {
         )}
       </div>
 
+      <DriverStatsSection reports={complaints} />
+
       {confirmId && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfirmId(null); }}>
           <div className="modal" style={{ maxWidth: 340 }}>
@@ -1109,6 +1138,15 @@ export default function ComplaintsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showNewComplaint && (
+        <ReportModal
+          type="complaints"
+          currentUser={currentUser}
+          onClose={() => setShowNewComplaint(false)}
+          onSaved={() => loadComplaints(period, customFrom, customTo)}
+        />
       )}
     </div>
   );
