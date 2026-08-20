@@ -4,6 +4,7 @@ import { COMPLAINT_ACTIONS, ACTIONS_WITH_SIZE, ACTION_SIZE_OPTIONS } from '../li
 import { updateReportData, searchReports } from '../lib/reportsApi';
 import { supabase } from '../lib/supabaseClient';
 import DriverExtendedReportForm, { resolveExtendedReport } from './DriverExtendedReportForm';
+import { autoAssignDriver, pendingComplaints, isOverdue } from '../lib/assignment';
 
 export function pad(n) { return String(n).padStart(2, '0'); }
 export function todayStr() {
@@ -120,16 +121,28 @@ export function CloseForm({ report, onClosed, onTrack }) {
       });
 
       const driverName = report.data?.driver;
-      if (driverName) {
-        try {
-          const all = await searchReports({ from: '2000-01-01', to: '2100-01-01', type: 'complaints' });
-          const stillActive = all.some((r) => r.id !== report.id && r.data?.driver === driverName && (r.data?.status || 'active') === 'active');
+      try {
+        const all = await searchReports({ from: '2000-01-01', to: '2100-01-01', type: 'complaints' });
+        const fresh = all.filter((r) => r.id !== report.id);
+
+        if (driverName) {
+          const stillActive = fresh.some((r) => r.data?.driver === driverName && (r.data?.status || 'active') === 'active');
           if (!stillActive) {
             await supabase.from('driver_locations').delete().eq('driver', driverName);
           }
-        } catch (e) {
-          console.error('location cleanup failed', e);
         }
+
+        // A slot just freed up — hand it to the oldest complaint still waiting.
+        const waiting = pendingComplaints(fresh);
+        for (const w of waiting) {
+          const pick = autoAssignDriver(fresh, w.data?.area);
+          if (!pick) break;
+          await updateReportData(w.id, { driver: pick });
+          const row = fresh.find((r) => r.id === w.id);
+          if (row) row.data = { ...row.data, driver: pick };
+        }
+      } catch (e) {
+        console.error('post-close housekeeping failed', e);
       }
 
       onClosed();
@@ -243,7 +256,7 @@ export function ComplaintCard({ report, onChanged, onTrack, onDismiss }) {
             color: isClosed ? 'var(--transactions)' : 'var(--complaints)',
             borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap',
           }}>
-            {isClosed ? '✅ مغلق' : '🟠 نشط'}
+            {isClosed ? '✅ مغلق' : (isOverdue(d) ? '⏰ متأخر' : '🟠 نشط')}
           </span>
           {isClosed && onDismiss && (
             <button
@@ -259,6 +272,16 @@ export function ComplaintCard({ report, onChanged, onTrack, onDismiss }) {
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+        {d.phone && (
+          <a
+            href={`tel:${d.phone}`}
+            onClick={(e) => e.stopPropagation()}
+            className="mono"
+            style={{ background: 'var(--transactions-bg)', border: '1px solid var(--transactions)', borderRadius: 7, padding: '3px 10px', fontSize: 11.5, fontWeight: 700, color: 'var(--transactions)', textDecoration: 'none' }}
+          >
+            📞 {d.phone}
+          </a>
+        )}
         <span style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11 }}>
           🕐 الإنشاء: {fmtDateTime(d.createdAt || report.created_at)}
         </span>
@@ -325,7 +348,7 @@ export function ComplaintCard({ report, onChanged, onTrack, onDismiss }) {
 export function groupByDriver(list) {
   const grouped = {};
   list.forEach((r) => {
-    const driver = r.data?.driver || 'بدون سائق';
+    const driver = r.data?.driver || '⏳ بانتظار التعيين';
     if (!grouped[driver]) grouped[driver] = [];
     grouped[driver].push(r);
   });
