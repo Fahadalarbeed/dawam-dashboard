@@ -17,7 +17,7 @@ const NAV_ITEMS = [
   { key: 'complaints', href: '/complaints', icon: '📢', label: 'البلاغات', color: 'var(--complaints)', bg: 'var(--complaints-bg)' },
   { key: 'reports', href: '/reports', icon: '📄', label: 'التقارير', color: 'var(--transactions)', bg: 'var(--transactions-bg)' },
   { key: 'technicians', href: '/driver-board', icon: '🔧', label: 'لوحة الفنيين', color: 'var(--daily)', bg: 'var(--daily-bg)' },
-  { key: 'stats', href: '/complaints', icon: '📊', label: 'الإحصائيات', color: 'var(--meters)', bg: 'var(--meters-bg)' },
+  { key: 'stats', href: '/stats', icon: '📊', label: 'الإحصائيات', color: 'var(--meters)', bg: 'var(--meters-bg)' },
 ];
 
 export default function DashboardPage() {
