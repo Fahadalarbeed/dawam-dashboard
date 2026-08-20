@@ -117,7 +117,8 @@ function stationCandidates(d) {
   return list;
 }
 
-export default function ComplaintsPage() {
+export default function ComplaintsPage({ mode = 'complaints' }) {
+  const isStats = mode === 'stats';
   const router = useRouter();
   const [showNewComplaint, setShowNewComplaint] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -518,17 +519,19 @@ export default function ComplaintsPage() {
     <div className="wrap">
       <header style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
         <button className="back-circle" onClick={() => router.push('/dashboard')} title="رجوع">→</button>
-        <h1 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>البلاغات</h1>
+        <h1 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>{isStats ? 'الإحصائيات' : 'البلاغات'}</h1>
       </header>
 
-      <div className="card" style={{ marginBottom: 14 }}>
-        <div className="circle-row" style={{ gridTemplateColumns: '1fr' }}>
-          <button className="circle-btn complaints" onClick={() => setShowNewComplaint(true)}>
-            <span className="circle-btn-ring">📝</span>
-            <span className="circle-btn-label">إنشاء بلاغ جديد</span>
-          </button>
+      {!isStats && (
+        <div className="card" style={{ marginBottom: 14 }}>
+          <div className="circle-row" style={{ gridTemplateColumns: '1fr' }}>
+            <button className="circle-btn complaints" onClick={() => setShowNewComplaint(true)}>
+              <span className="circle-btn-ring">📝</span>
+              <span className="circle-btn-label">إنشاء بلاغ جديد</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {complaints && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 14 }}>
@@ -996,6 +999,7 @@ export default function ComplaintsPage() {
         )}
       </div>
 
+      {!isStats && (
       <div className="card" style={{ marginBottom: 14 }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 12px' }}>🔍 البحث في البلاغات</h2>
 
@@ -1071,6 +1075,7 @@ export default function ComplaintsPage() {
           </div>
         )}
       </div>
+      )}
 
       <div className="card">
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
