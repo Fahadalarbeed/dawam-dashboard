@@ -87,8 +87,9 @@ function DriverTimeChart({ within1h, within2h, within3h, over3h }) {
   );
 }
 
-export default function DriverStatsSection({ reports }) {
-  const [show, setShow] = useState(false);
+// `defaultOpen` lets a parent tile control visibility; the built-in toggle is then hidden.
+export default function DriverStatsSection({ reports, defaultOpen = false }) {
+  const [show, setShow] = useState(defaultOpen);
   const [month, setMonth] = useState('');
   const [expandedDriver, setExpandedDriver] = useState(null);
 
@@ -99,18 +100,20 @@ export default function DriverStatsSection({ reports }) {
   const driverNames = Object.keys(grouped).sort((a, b) => computeDriverRating(grouped[b]).rating - computeDriverRating(grouped[a]).rating);
 
   return (
-    <div className="card" style={{ marginTop: 14 }}>
-      <button onClick={() => setShow((v) => !v)} style={{
-        width: '100%', textAlign: 'center', background: 'var(--surface-2)', border: '1px solid rgba(180,83,9,0.35)',
-        borderRadius: 12, padding: '14px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-      }}>
-        <div style={{ fontSize: 22 }}>📊</div>
-        <div style={{ fontSize: 13.5, fontWeight: 700 }}>إحصائية الفنيين الشهرية</div>
-        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>عدد البلاغات المغلقة ووقت الإغلاق لكل فني</div>
-      </button>
+    <div className="framed">
+      {!defaultOpen && (
+        <button onClick={() => setShow((v) => !v)} style={{
+          width: '100%', textAlign: 'center', background: 'var(--surface-2)', border: '1px solid var(--border)',
+          borderRadius: 12, padding: '14px 12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+        }}>
+          <div style={{ fontSize: 22 }}>📊</div>
+          <div style={{ fontSize: 13.5, fontWeight: 700 }}>إحصائية الفنيين الشهرية</div>
+          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>عدد البلاغات المغلقة ووقت الإغلاق لكل فني</div>
+        </button>
+      )}
 
       {show && (
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
+        <div>
           {months.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '20px 10px', color: 'var(--text-muted)' }}>لا توجد بلاغات مغلقة بعد</div>
           ) : (
