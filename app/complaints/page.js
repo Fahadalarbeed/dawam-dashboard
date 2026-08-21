@@ -161,6 +161,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
   const [searchPhone, setSearchPhone] = useState('');
   const [searchAction, setSearchAction] = useState('');
   const [showAllComplaints, setShowAllComplaints] = useState(false);
+  const [showDriverStats, setShowDriverStats] = useState(false);
 
   const [dailyReports, setDailyReports] = useState(null);
   const [showDailyInline, setShowDailyInline] = useState(false);
@@ -523,7 +524,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
       </header>
 
       {!isStats && (
-        <div className="card" style={{ marginBottom: 14 }}>
+        <div className="framed">
           <div className="circle-row" style={{ gridTemplateColumns: '1fr' }}>
             <button className="circle-btn complaints" onClick={() => setShowNewComplaint(true)}>
               <span className="circle-btn-ring">📝</span>
@@ -549,7 +550,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
       )}
 
       {isStats && selectedCategory && (
-        <div className="card" style={{ marginBottom: 14 }}>
+        <div className="framed">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
               بلاغات: {selectedCategory === 'all' ? 'الإجمالي' : CATEGORY_DEFS.find((c) => c.key === selectedCategory)?.label}
@@ -589,15 +590,12 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
 
       {isStats && (<>
       {topMonth && (
-        <div className="card" style={{ marginBottom: 14 }}>
-          <button onClick={() => setShowDailyInline((v) => !v)} style={{
-            width: '100%', textAlign: 'center', background: 'linear-gradient(180deg, rgba(220,38,38,0.06), rgba(220,38,38,0.01))',
-            border: '1.5px solid rgba(220,38,38,0.35)', borderRadius: 14, padding: '22px 16px', cursor: 'pointer',
-          }}>
-            <div style={{ fontSize: 38, lineHeight: 1, marginBottom: 8 }}>🔺</div>
-            <div style={{ fontSize: 21, fontWeight: 800, color: 'var(--danger)' }}>{topMonth.label}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--text-muted)', fontWeight: 600, marginTop: 6 }}>
-              {topPeriodKey && `${PERIOD_META[topPeriodKey].icon} الأكثر انقطاعًا: ${PERIOD_META[topPeriodKey].label}`}
+        <div className="framed">
+          <button className="highlight-card" style={{ width: '100%', margin: 0 }} onClick={() => setShowDailyInline((v) => !v)}>
+            <div className="highlight-eyebrow">أكثر شهر انقطاعًا</div>
+            <div className="highlight-value">{topMonth.label}</div>
+            <div className="highlight-sub">
+              {topPeriodKey && `${PERIOD_META[topPeriodKey].icon} ${PERIOD_META[topPeriodKey].label}`}
             </div>
           </button>
 
@@ -675,27 +673,30 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-        <button onClick={() => setShowRepeated((v) => !v)} style={{
-          textAlign: 'center', background: 'var(--surface-2)', border: '1px solid rgba(37,99,235,0.35)',
-          borderRadius: 12, padding: '12px 6px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-        }}>
-          <div style={{ fontSize: 20 }}>🔁</div>
-          <div style={{ fontSize: 12, fontWeight: 700 }}>انقطاعات متكررة منازل</div>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{repeatedEntries.length > 0 ? `${repeatedEntries.length} عنوان متكرر` : 'اضغط للعرض'}</div>
+      <div className="tile-row">
+        <button className="tile-btn" onClick={() => setShowRepeated((v) => !v)}>
+          <span className="tile-ring" style={{ color: 'var(--transactions)' }}>🏠</span>
+          <span className="tile-label">انقطاعات متكررة منازل</span>
+          <span className="tile-sub">{repeatedEntries.length > 0 ? `${repeatedEntries.length} عنوان` : 'اضغط للعرض'}</span>
         </button>
-        <button onClick={() => setShowStationRepeated((v) => !v)} style={{
-          textAlign: 'center', background: 'var(--surface-2)', border: '1px solid rgba(180,83,9,0.35)',
-          borderRadius: 12, padding: '12px 6px', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-        }}>
-          <div style={{ fontSize: 20 }}>🏭</div>
-          <div style={{ fontSize: 12, fontWeight: 700 }}>انقطاعات متكررة محطات</div>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{stationRepeatedEntries.length > 0 ? `${stationRepeatedEntries.length} محطة/UDS متكررة` : 'اضغط للعرض'}</div>
+        <button className="tile-btn" onClick={() => setShowStationRepeated((v) => !v)}>
+          <span className="tile-ring" style={{ color: 'var(--complaints)' }}>🏭</span>
+          <span className="tile-label">انقطاعات متكررة محطات</span>
+          <span className="tile-sub">{stationRepeatedEntries.length > 0 ? `${stationRepeatedEntries.length} محطة` : 'اضغط للعرض'}</span>
+        </button>
+        <button className="tile-btn" onClick={() => setShowDriverStats((v) => !v)}>
+          <span className="tile-ring" style={{ color: 'var(--daily)' }}>
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <path d="M6 19V13" /><path d="M12 19V7" /><path d="M18 19V10" />
+            </svg>
+          </span>
+          <span className="tile-label">إحصائية الفنيين</span>
+          <span className="tile-sub">شهرية</span>
         </button>
       </div>
 
       {showRepeated && (
-        <div className="card" style={{ marginBottom: 14 }}>
+        <div className="framed">
           <div>
             <div className="field" style={{ marginTop: 0 }}>
               <label>المناطق (اتركه فاضي = الكل، أو حدد مناطق معينة)</label>
@@ -770,7 +771,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
       )}
 
       {showStationRepeated && (
-        <div className="card" style={{ marginBottom: 14 }}>
+        <div className="framed">
           <div>
             <div className="field" style={{ marginTop: 0 }}>
               <label>المناطق (اتركه فاضي = الكل، أو حدد مناطق معينة)</label>
@@ -878,7 +879,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
           </div>
 
           {selectedExtremeArea && (
-            <div className="card" style={{ marginBottom: 14 }}>
+            <div className="framed">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>بلاغات: {selectedExtremeArea}</h2>
                 <button onClick={() => setSelectedExtremeArea(null)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 16, cursor: 'pointer' }}>✕</button>
@@ -916,7 +917,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
         </>
       )}
 
-      <div className="card" style={{ marginBottom: 14 }}>
+      <div className="framed">
         <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 10 }}>فترة الإحصائية العامة (تؤثر على كل البطاقات والرسوم أعلاه)</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {[['all', 'الكل'], ['daily', 'يومي'], ['weekly', 'اسبوعي'], ['custom', 'مخصص']].map(([val, label]) => (
@@ -1002,7 +1003,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
       </>)}
 
       {!isStats && (
-      <div className="card" style={{ marginBottom: 14 }}>
+      <div className="framed">
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 12px' }}>🔍 البحث في البلاغات</h2>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -1134,7 +1135,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
       </div>
       )}
 
-      {isStats && <DriverStatsSection reports={complaints} />}
+      {isStats && showDriverStats && <DriverStatsSection reports={complaints} defaultOpen />}
 
       {confirmId && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfirmId(null); }}>
