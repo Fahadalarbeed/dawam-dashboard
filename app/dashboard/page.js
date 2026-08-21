@@ -28,6 +28,8 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({ total: 0, faults: 0, meters: 0 });
   const [complaintCounts, setComplaintCounts] = useState({ active: 0, doneToday: 0 });
   const [clock, setClock] = useState('');
+  const [resetCountdown, setResetCountdown] = useState('--:--:--');
+  const [resetPct, setResetPct] = useState(0);
 
   const [theme, setTheme] = useState('light');
 
@@ -79,6 +81,14 @@ export default function DashboardPage() {
     function tick() {
       const now = new Date();
       setClock(`${days[now.getDay()]} ${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} — ${pad(now.getHours())}:${pad(now.getMinutes())}`);
+      const midnight = new Date(now); midnight.setHours(24, 0, 0, 0);
+      const msLeft = midnight - now;
+      const h = Math.floor(msLeft / 3600000);
+      const m = Math.floor((msLeft % 3600000) / 60000);
+      const s = Math.floor((msLeft % 60000) / 1000);
+      setResetCountdown(`${pad(h)}:${pad(m)}:${pad(s)}`);
+      const dayMs = 24 * 3600000;
+      setResetPct((((dayMs - msLeft) / dayMs) * 100).toFixed(2));
     }
     tick();
     const t = setInterval(tick, 1000);
@@ -128,6 +138,9 @@ export default function DashboardPage() {
         ))}
       </div>
 
+      <PendingApprovalSection />
+      <ReturnedToTechnicianSection />
+
       <div className="home-grid">
         {boxes.map((b) => (
           <div key={b.key} className="home-box" onClick={() => router.push(b.go)}>
@@ -140,8 +153,14 @@ export default function DashboardPage() {
 
       <ShiftLeadCard />
 
-      <PendingApprovalSection />
-      <ReturnedToTechnicianSection />
+      <div className="reset-bar-wrap">
+        <div className="reset-label">
+          تتصفر عند منتصف الليل خلال <b className="mono">{resetCountdown}</b>
+        </div>
+        <div className="reset-bar-track">
+          <div className="reset-bar-fill" style={{ width: `${resetPct}%` }} />
+        </div>
+      </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginTop: 22, fontSize: 11.5, color: 'var(--text-muted)' }}>
         <span>{user?.email}</span>
