@@ -216,15 +216,16 @@ export default function PendingApprovalSection() {
 
   return (
     <>
-      <div className="card" style={{ marginBottom: 14, borderColor: 'rgba(220,38,38,0.4)' }}>
+      <div className="framed" style={{ borderColor: 'rgba(220,38,38,0.4)' }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 14px', color: 'var(--danger)' }}>
           ⏳ تقارير من الفنيين بانتظار الاعتماد ({pending.length})
         </h2>
+        <div className="alert-grid">
         {pending.map((r) => {
           const d = r.data || {};
           const isMeter = r.type === 'meters';
           return (
-            <div key={r.id} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, marginBottom: 10 }}>
+            <div key={r.id} style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 12, padding: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                 <div>
                   <div style={{ fontSize: 13, fontWeight: 800 }}>{isMeter ? '📟 تقرير عداد محروق' : '⚠️ تقرير عطل'}</div>
@@ -261,6 +262,7 @@ export default function PendingApprovalSection() {
             </div>
           );
         })}
+        </div>
       </div>
       {previewReport && (
         <PreviewModal
