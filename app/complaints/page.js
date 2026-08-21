@@ -695,6 +695,8 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
         </button>
       </div>
 
+      {showDriverStats && <DriverStatsSection reports={complaints} defaultOpen />}
+
       {showRepeated && (
         <div className="framed">
           <div>
@@ -1135,7 +1137,6 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
       </div>
       )}
 
-      {isStats && showDriverStats && <DriverStatsSection reports={complaints} defaultOpen />}
 
       {confirmId && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfirmId(null); }}>
