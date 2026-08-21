@@ -184,6 +184,11 @@ select:focus, input:focus, textarea:focus {
 .shift-lead-name { font-size: 14px; font-weight: 600; color: var(--text); }
 .shift-lead-phone { font-size: 12.5px; color: var(--text-muted); font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
 
+/* ---- alert card grids (pending / returned reports) ---- */
+.alert-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 900px) { .alert-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 600px) { .alert-grid { grid-template-columns: 1fr; } }
+
 /* ---- circular icon navigation (home) ---- */
 .icon-nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
 .icon-nav-btn {
@@ -202,17 +207,33 @@ select:focus, input:focus, textarea:focus {
 
 /* ---- home stat boxes ---- */
 .home-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
-.home-box {
-  border-radius: 14px; padding: 14px 8px; cursor: pointer;
-  background: var(--surface); border: 1px solid var(--border);
-  text-align: center; font-family: 'Cairo', sans-serif;
-  transition: transform .15s, opacity .15s, border-color .2s;
+@media (max-width: 560px) {
+  .home-grid { gap: 6px; }
+  .home-box { padding: 12px 8px 11px; }
+  .home-box-value { font-size: 20px; }
+  .home-box-label { font-size: 9px; }
+  .home-box-icon { width: 26px; height: 26px; font-size: 12px; margin-bottom: 8px; }
 }
-.home-box:hover { border-color: var(--text-muted); }
-.home-box:active { transform: scale(.97); opacity: .85; }
-.home-box-icon { font-size: 14px; opacity: .75; margin-bottom: 6px; }
-.home-box-value { font-size: 21px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; line-height: 1; }
-.home-box-label { font-size: 9.5px; font-weight: 500; color: var(--text-muted); margin-top: 5px; line-height: 1.3; }
+.home-box {
+  position: relative; overflow: hidden;
+  border-radius: 16px; padding: 16px 12px 14px; cursor: pointer;
+  background: var(--surface); border: 1px solid var(--border);
+  font-family: 'Cairo', sans-serif; text-align: right;
+  transition: transform .15s, border-color .2s;
+}
+.home-box::before {
+  content: ''; position: absolute; top: 0; right: 0; width: 3px; height: 100%;
+  background: var(--accent, var(--transactions)); opacity: .9;
+}
+.home-box:hover { border-color: var(--accent, var(--text-muted)); }
+.home-box:active { transform: scale(.98); }
+.home-box-icon {
+  width: 30px; height: 30px; border-radius: 9px; margin-bottom: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+  background: var(--surface-2);
+}
+.home-box-value { font-size: 25px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; line-height: 1; }
+.home-box-label { font-size: 10px; font-weight: 500; color: var(--text-muted); margin-top: 6px; line-height: 1.35; }
 
 /* ---- large circular action buttons (reports page) ---- */
 .circle-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
@@ -313,6 +334,4 @@ select:focus, input:focus, textarea:focus {
   max-width: 520px; width: 100%; padding: 20px; margin-top: 10px;
 }
 
-@media (max-width: 560px) {
-  .home-grid { grid-template-columns: repeat(2, 1fr); }
-}
+/* four stat boxes always stay on a single row */
