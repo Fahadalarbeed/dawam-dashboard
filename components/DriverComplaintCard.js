@@ -33,33 +33,71 @@ export function buildMapsUrl(d) {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(buildAddressText(d))}&travelmode=driving`;
 }
 
-export async function openGoogleRoute(d) {
-  try {
-    const streetPart = [d.block ? `Block ${d.block}` : '', d.street ? `Street ${d.street}` : '', d.avenue ? `Avenue ${d.avenue}` : '', d.building ? `Plot ${d.building}` : '', d.house ? `House ${d.house}` : ''].filter(Boolean).join(' ');
-    const params = new URLSearchParams({
-      format: 'json',
-      limit: '1',
-      countrycodes: 'kw',
-      viewbox: '46.5,30.1,48.6,28.5',
-      bounded: '1',
-      country: 'Kuwait',
-    });
-    if (streetPart) params.set('street', streetPart);
-    if (d.area) params.set('city', d.area);
+// Nominatim returns a `place_rank`: lower = broader (country/city), higher = precise
+// (street/building). Anything at city level or broader is not a usable destination,
+// because it drops the technician in the middle of the whole area.
+const MIN_USEFUL_PLACE_RANK = 18; // ~street level and finer
 
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-      headers: { 'Accept-Language': 'ar' },
-    });
-    const results = await res.json();
-    if (results && results[0]) {
-      const { lat, lon } = results[0];
-      window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=driving`;
-      return;
+function scoreCandidate(r, d) {
+  const rank = Number(r.place_rank || 0);
+  if (rank < MIN_USEFUL_PLACE_RANK) return -1; // too broad — reject
+  const name = (r.display_name || '');
+  let score = rank;
+  // reward results that actually mention the block / street we asked for
+  if (d.block && new RegExp(`\\b${d.block}\\b`).test(name)) score += 6;
+  if (d.street && new RegExp(`\\b${d.street}\\b`).test(name)) score += 4;
+  if (r.type === 'house' || r.type === 'building') score += 5;
+  return score;
+}
+
+async function geocodeCandidates(query) {
+  const params = new URLSearchParams({
+    format: 'json',
+    limit: '10',
+    addressdetails: '1',
+    countrycodes: 'kw',
+    viewbox: '46.5,30.1,48.6,28.5',
+    bounded: '1',
+    q: query,
+  });
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
+    headers: { 'Accept-Language': 'ar' },
+  });
+  if (!res.ok) return [];
+  const json = await res.json();
+  return Array.isArray(json) ? json : [];
+}
+
+export async function openGoogleRoute(d) {
+  // Free-text queries work far better than Nominatim's structured fields for
+  // Kuwaiti block addressing, so we try progressively looser phrasings.
+  const attempts = [
+    [d.area, d.block && `قطعة ${d.block}`, d.street && `شارع ${d.street}`, d.house && `منزل ${d.house}`, 'الكويت'],
+    [d.area, d.block && `Block ${d.block}`, d.street && `Street ${d.street}`, 'Kuwait'],
+    [d.area, d.block && `قطعة ${d.block}`, 'الكويت'],
+  ].map((parts) => parts.filter(Boolean).join(', '));
+
+  try {
+    for (const q of attempts) {
+      const results = await geocodeCandidates(q);
+      const best = results
+        .map((r) => ({ r, s: scoreCandidate(r, d) }))
+        .filter((x) => x.s >= 0)
+        .sort((a, b) => b.s - a.s)[0];
+
+      if (best) {
+        const { lat, lon } = best.r;
+        window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=driving`;
+        return;
+      }
     }
   } catch (e) {
     console.error('OSM geocoding failed', e);
   }
-  // fallback: text-based Google search if OSM couldn't find it
+
+  // Nothing precise enough was found — hand the address to Google as text and say so,
+  // rather than silently routing to the middle of the area.
+  alert('تعذّر تحديد الموقع بدقة من الخريطة.\nراح نفتح بحث خرائط Google بالعنوان — تأكد من الموقع قبل ما تتحرك،\nأو استخدم زر Kuwait Finder للدقة الكاملة.');
   window.location.href = buildMapsUrl(d);
 }
 
