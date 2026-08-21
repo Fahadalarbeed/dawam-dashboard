@@ -533,7 +533,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
         </div>
       )}
 
-      {complaints && (
+      {isStats && complaints && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 14 }}>
           <div className="card" style={{ padding: '8px 6px', textAlign: 'center', cursor: 'pointer' }} onClick={() => setSelectedCategory(selectedCategory === 'all' ? null : 'all')}>
             <div className="mono" style={{ fontSize: 22, fontWeight: 800, color: 'var(--transactions)' }}>{complaints.length}</div>
@@ -548,7 +548,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
         </div>
       )}
 
-      {selectedCategory && (
+      {isStats && selectedCategory && (
         <div className="card" style={{ marginBottom: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
             <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>
@@ -587,6 +587,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
         </div>
       )}
 
+      {isStats && (<>
       {topMonth && (
         <div className="card" style={{ marginBottom: 14 }}>
           <button onClick={() => setShowDailyInline((v) => !v)} style={{
@@ -998,6 +999,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
           </div>
         )}
       </div>
+      </>)}
 
       {!isStats && (
       <div className="card" style={{ marginBottom: 14 }}>
@@ -1077,6 +1079,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
       </div>
       )}
 
+      {!isStats && (
       <div className="card">
         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 14 }}>
           {complaints ? `${complaints.length} بلاغ` : 'جارٍ التحميل...'}
@@ -1129,8 +1132,9 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
           </div>
         )}
       </div>
+      )}
 
-      <DriverStatsSection reports={complaints} />
+      {isStats && <DriverStatsSection reports={complaints} />}
 
       {confirmId && (
         <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfirmId(null); }}>
