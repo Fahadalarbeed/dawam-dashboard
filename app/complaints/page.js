@@ -1009,7 +1009,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: '0 0 12px' }}>🔍 البحث في البلاغات</h2>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {[['daily', 'يومي'], ['weekly', 'اسبوعي'], ['custom', 'مخصص']].map(([val, label]) => (
+          {[['all', 'الكل'], ['daily', 'يومي'], ['weekly', 'اسبوعي'], ['custom', 'مخصص']].map(([val, label]) => (
             <button key={val} className={`chip ${searchPeriod === val ? 'active' : ''}`} onClick={() => setSearchPeriod(val)}>{label}</button>
           ))}
         </div>
