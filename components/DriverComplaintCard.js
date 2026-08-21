@@ -33,27 +33,31 @@ export function buildMapsUrl(d) {
   return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(buildAddressText(d))}&travelmode=driving`;
 }
 
-// Nominatim returns a `place_rank`: lower = broader (country/city), higher = precise
-// (street/building). Anything at city level or broader is not a usable destination,
-// because it drops the technician in the middle of the whole area.
-const MIN_USEFUL_PLACE_RANK = 18; // ~street level and finer
-
+// Kuwaiti addresses are area + block + street + house. Nominatim has no single field
+// for "block", so free-text queries work far better than its structured params.
+// We ask for several candidates and pick the most specific one we can verify.
 function scoreCandidate(r, d) {
-  const rank = Number(r.place_rank || 0);
-  if (rank < MIN_USEFUL_PLACE_RANK) return -1; // too broad — reject
-  const name = (r.display_name || '');
-  let score = rank;
-  // reward results that actually mention the block / street we asked for
-  if (d.block && new RegExp(`\\b${d.block}\\b`).test(name)) score += 6;
-  if (d.street && new RegExp(`\\b${d.street}\\b`).test(name)) score += 4;
-  if (r.type === 'house' || r.type === 'building') score += 5;
+  const name = r.display_name || '';
+  const addr = r.address || {};
+  let score = Number(r.place_rank || 0);   // higher = more specific
+
+  // strong signals: the result actually names the block / street we asked for
+  const blockRe = d.block ? new RegExp(`(^|[^0-9])${d.block}([^0-9]|$)`) : null;
+  const streetRe = d.street ? new RegExp(`(^|[^0-9])${d.street}([^0-9]|$)`) : null;
+  if (blockRe && blockRe.test(name)) score += 12;
+  if (streetRe && (streetRe.test(name) || streetRe.test(addr.road || ''))) score += 10;
+  if (addr.house_number) score += 8;
+  if (addr.road) score += 6;
+
+  // must at least be in the right area, otherwise it is useless
+  if (d.area && name && !name.includes(d.area)) score -= 15;
   return score;
 }
 
 async function geocodeCandidates(query) {
   const params = new URLSearchParams({
     format: 'json',
-    limit: '10',
+    limit: '15',
     addressdetails: '1',
     countrycodes: 'kw',
     viewbox: '46.5,30.1,48.6,28.5',
@@ -61,7 +65,7 @@ async function geocodeCandidates(query) {
     q: query,
   });
   const res = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
-    headers: { 'Accept-Language': 'ar' },
+    headers: { 'Accept-Language': 'ar,en' },
   });
   if (!res.ok) return [];
   const json = await res.json();
@@ -69,35 +73,39 @@ async function geocodeCandidates(query) {
 }
 
 export async function openGoogleRoute(d) {
-  // Free-text queries work far better than Nominatim's structured fields for
-  // Kuwaiti block addressing, so we try progressively looser phrasings.
+  // Try most-specific phrasing first, then progressively looser ones. Arabic first:
+  // Kuwaiti block/street data in OSM is predominantly tagged in Arabic.
   const attempts = [
     [d.area, d.block && `قطعة ${d.block}`, d.street && `شارع ${d.street}`, d.house && `منزل ${d.house}`, 'الكويت'],
+    [d.area, d.block && `قطعة ${d.block}`, d.street && `شارع ${d.street}`, 'الكويت'],
+    [d.street && `شارع ${d.street}`, d.area, 'الكويت'],
     [d.area, d.block && `Block ${d.block}`, d.street && `Street ${d.street}`, 'Kuwait'],
     [d.area, d.block && `قطعة ${d.block}`, 'الكويت'],
-  ].map((parts) => parts.filter(Boolean).join(', '));
+  ].map((parts) => parts.filter(Boolean).join('، '));
 
+  let best = null;
   try {
     for (const q of attempts) {
       const results = await geocodeCandidates(q);
-      const best = results
+      if (!results.length) continue;
+      const ranked = results
         .map((r) => ({ r, s: scoreCandidate(r, d) }))
-        .filter((x) => x.s >= 0)
         .sort((a, b) => b.s - a.s)[0];
-
-      if (best) {
-        const { lat, lon } = best.r;
-        window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=driving`;
-        return;
-      }
+      if (ranked && (!best || ranked.s > best.s)) best = ranked;
+      // a result naming both block and street is as good as OSM gets — stop here
+      if (best && best.s >= 40) break;
     }
   } catch (e) {
     console.error('OSM geocoding failed', e);
   }
 
-  // Nothing precise enough was found — hand the address to Google as text and say so,
-  // rather than silently routing to the middle of the area.
-  alert('تعذّر تحديد الموقع بدقة من الخريطة.\nراح نفتح بحث خرائط Google بالعنوان — تأكد من الموقع قبل ما تتحرك،\nأو استخدم زر Kuwait Finder للدقة الكاملة.');
+  if (best) {
+    const { lat, lon } = best.r;
+    window.location.href = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=driving`;
+    return;
+  }
+
+  // Nothing usable from OSM — let Google try the raw address text.
   window.location.href = buildMapsUrl(d);
 }
 
