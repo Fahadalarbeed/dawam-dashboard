@@ -23,6 +23,7 @@ export default function DriversPublicPage() {
   const [myName, setMyName] = useState('');
   const [namePicked, setNamePicked] = useState(false);
   const [gpsStatus, setGpsStatus] = useState('');
+  const [trackingOn, setTrackingOn] = useState(false);
   const loadReportsRef = useRef(null);
   const watchIdRef = useRef(null);
 
@@ -42,6 +43,7 @@ export default function DriversPublicPage() {
   useEffect(() => {
     const saved = localStorage.getItem('my_driver_name');
     if (saved) { setMyName(saved); setNamePicked(true); }
+    if (localStorage.getItem('tracking_on') === '1') setTrackingOn(true);
   }, []);
 
   useEffect(() => {
@@ -109,38 +111,34 @@ export default function DriversPublicPage() {
   const grouped = groupByDriver(active);
   const myActiveCount = active.filter((r) => r.data?.driver === myName).length;
 
-  // Live GPS tracking: while this driver has at least one active complaint, continuously
-  // report their real position to Supabase so staff can watch them move on the map.
+  // Live GPS tracking stays on until the technician turns it off, so staff can see
+  // idle technicians too and route new complaints to whoever is actually closest.
   useEffect(() => {
-    if (!namePicked || !myName || myActiveCount === 0) {
+    if (!namePicked || !myName || !trackingOn) {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
-        setGpsStatus('');
-        if (myName) supabase.from('driver_locations').delete().eq('driver', myName).then(() => {});
       }
-      return;
+      setGpsStatus('');
+      return undefined;
     }
     if (!('geolocation' in navigator)) {
       setGpsStatus('✗ الجهاز ما يدعم تحديد الموقع');
-      return;
+      return undefined;
     }
-    if (watchIdRef.current !== null) return; // already watching
+    if (watchIdRef.current !== null) return undefined; // already watching
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       async (pos) => {
-        setGpsStatus('🟢 يتم إرسال موقعك الحي...');
         const { error } = await supabase.from('driver_locations').upsert({
           driver: myName,
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           updated_at: new Date().toISOString(),
         });
-        if (error) {
-          setGpsStatus('✗ فشل إرسال الموقع: ' + error.message);
-        } else {
-          setGpsStatus('🟢 تم إرسال موقعك الحي (' + new Date().toLocaleTimeString('ar-KW') + ')');
-        }
+        setGpsStatus(error
+          ? '✗ فشل إرسال الموقع: ' + error.message
+          : '🟢 التتبع شغّال — آخر تحديث ' + new Date().toLocaleTimeString('ar-KW'));
       },
       (err) => { setGpsStatus('✗ تعذر تحديد الموقع: ' + err.message); },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
@@ -152,7 +150,17 @@ export default function DriversPublicPage() {
         watchIdRef.current = null;
       }
     };
-  }, [namePicked, myName, myActiveCount]);
+  }, [namePicked, myName, trackingOn]);
+
+  async function toggleTracking() {
+    const next = !trackingOn;
+    setTrackingOn(next);
+    localStorage.setItem('tracking_on', next ? '1' : '0');
+    if (!next && myName) {
+      // remove the pin so staff don't see a stale position
+      await supabase.from('driver_locations').delete().eq('driver', myName);
+    }
+  }
 
   function pickName(name) {
     setMyName(name);
@@ -189,9 +197,35 @@ export default function DriversPublicPage() {
         <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>🔧 {myName}</span>
       </header>
 
-      {gpsStatus && (
-        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>{gpsStatus}</div>
-      )}
+      <div className="framed" style={{ padding: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+          <div>
+            <div style={{ fontSize: 12.5, fontWeight: 600 }}>
+              {trackingOn ? '📍 التتبع شغّال' : '📍 التتبع متوقف'}
+            </div>
+            <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 3 }}>
+              {trackingOn ? 'موقعك يوصل للإدارة لتوزيع أقرب بلاغ لك' : 'فعّله عشان توصلك البلاغات القريبة منك'}
+            </div>
+          </div>
+          <button
+            onClick={toggleTracking}
+            style={{
+              flexShrink: 0, border: '1px solid', borderRadius: 999, padding: '8px 16px',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: "'Cairo', sans-serif",
+              background: trackingOn ? 'var(--transactions)' : 'transparent',
+              borderColor: trackingOn ? 'var(--transactions)' : 'var(--border)',
+              color: trackingOn ? '#fff' : 'var(--text-muted)',
+            }}
+          >
+            {trackingOn ? 'إيقاف' : 'تفعيل'}
+          </button>
+        </div>
+        {gpsStatus && (
+          <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--border)' }}>
+            {gpsStatus}
+          </div>
+        )}
+      </div>
 
       {!soundEnabled && (
         <button className="btn-primary" onClick={enableSound} style={{ marginBottom: 14 }}>
