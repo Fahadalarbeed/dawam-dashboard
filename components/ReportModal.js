@@ -4,6 +4,7 @@ import {
   FAULT_FIELDS, METER_FIELDS, COMPLAINT_FIELDS, DAILY_PERIODS, DAILY_METRICS, DRIVERS_LIST,
 } from '../lib/constants';
 import { autoAssignDriver } from '../lib/assignment';
+import { supabase } from '../lib/supabaseClient';
 import { getCurrentShiftLetter } from '../lib/shift';
 import { buildFaultDoc, buildMeterDoc, buildDailyDoc } from '../lib/templates';
 import { htmlToPdfBlob, sharePdf } from '../lib/pdf';
@@ -92,6 +93,7 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(null); // { blob, filename }
   const [allComplaints, setAllComplaints] = useState([]);
+  const [liveLocations, setLiveLocations] = useState({});
   const [manualDriver, setManualDriver] = useState('');
 
   // Current workload is needed to pick a technician, so load it once when a complaint form opens.
@@ -102,6 +104,14 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
       try {
         const rows = await searchReports({ from: '2000-01-01', to: '2100-01-01', type: 'complaints' });
         if (!cancelled) setAllComplaints(rows || []);
+
+        // live technician positions let us route the complaint to whoever is actually closest
+        const { data: locs } = await supabase.from('driver_locations').select('driver, lat, lng');
+        if (!cancelled && locs) {
+          const map = {};
+          locs.forEach((l) => { map[l.driver] = { lat: l.lat, lng: l.lng }; });
+          setLiveLocations(map);
+        }
       } catch (e) {
         console.error('could not load workload for assignment', e);
       }
@@ -110,7 +120,7 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
   }, [type]);
 
   const suggestedDriver = type === 'complaints' && data.area
-    ? autoAssignDriver(allComplaints, data.area)
+    ? autoAssignDriver(allComplaints, data.area, liveLocations)
     : null;
 
   function setField(key, value) {
@@ -162,7 +172,7 @@ export default function ReportModal({ type, currentUser, onClose, onSaved }) {
       if (type === 'complaints') {
         // Manual pick always wins; otherwise the engine assigns, and an empty result
         // means the complaint is queued until a technician frees up.
-        const assigned = manualDriver || autoAssignDriver(allComplaints, data.area) || '';
+        const assigned = manualDriver || autoAssignDriver(allComplaints, data.area, liveLocations) || '';
         const displayName = `بلاغ - ${data.area || 'بدون منطقة'} - ${assigned || 'بانتظار التعيين'}`.trim();
         const id = crypto.randomUUID();
         const complaintData = {
