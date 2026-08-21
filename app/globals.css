@@ -74,6 +74,25 @@ a { color: inherit; }
 }
 .panel h2 { font-size: 14px; font-weight: 600; margin: 0 0 14px; letter-spacing: .2px; }
 
+/* framed sub-blocks used inside stats/complaints pages */
+.framed {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px; margin-bottom: 14px;
+}
+.framed-title { font-size: 13px; font-weight: 600; margin: 0 0 12px; letter-spacing: .2px; }
+
+/* highlight block (top outage month) */
+.highlight-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  padding: 18px 16px; margin-bottom: 14px; text-align: center; cursor: pointer;
+  transition: border-color .2s, transform .15s;
+}
+.highlight-card:hover { border-color: var(--danger); }
+.highlight-card:active { transform: scale(.99); }
+.highlight-eyebrow { font-size: 10.5px; color: var(--text-muted); font-weight: 500; letter-spacing: .3px; }
+.highlight-value { font-size: 22px; font-weight: 700; color: var(--danger); margin-top: 6px; line-height: 1.2; }
+.highlight-sub { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+
 .field { margin-top: 14px; }
 .field label {
   font-size: 11px; color: var(--text-muted); display: block;
@@ -184,11 +203,12 @@ select:focus, input:focus, textarea:focus {
 /* ---- home stat boxes ---- */
 .home-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
 .home-box {
-  border-radius: 14px; padding: 12px 8px; cursor: pointer;
+  border-radius: 14px; padding: 14px 8px; cursor: pointer;
   background: var(--surface); border: 1px solid var(--border);
   text-align: center; font-family: 'Cairo', sans-serif;
-  transition: transform .15s, opacity .15s;
+  transition: transform .15s, opacity .15s, border-color .2s;
 }
+.home-box:hover { border-color: var(--text-muted); }
 .home-box:active { transform: scale(.97); opacity: .85; }
 .home-box-icon { font-size: 14px; opacity: .75; margin-bottom: 6px; }
 .home-box-value { font-size: 21px; font-weight: 700; font-family: 'IBM Plex Mono', monospace; line-height: 1; }
