@@ -65,6 +65,15 @@ a { color: inherit; }
   padding: 18px;
 }
 
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.panel h2 { font-size: 14px; font-weight: 600; margin: 0 0 14px; letter-spacing: .2px; }
+
 .field { margin-top: 14px; }
 .field label {
   font-size: 11px; color: var(--text-muted); display: block;
@@ -130,6 +139,31 @@ select:focus, input:focus, textarea:focus {
 .badge.faults { background: var(--faults-bg); color: var(--faults); }
 .badge.meters { background: var(--meters-bg); color: var(--meters); }
 .badge.daily { background: var(--daily-bg); color: var(--daily); }
+
+/* ---- midnight reset bar ---- */
+.reset-bar-wrap {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  padding: 10px 14px; margin-bottom: 22px; display: flex; align-items: center; gap: 12px;
+}
+.reset-bar-track { flex: 1; height: 5px; background: var(--surface-2); border-radius: 3px; overflow: hidden; }
+.reset-bar-fill { height: 100%; background: linear-gradient(90deg, var(--transactions), var(--meters)); border-radius: 3px; transition: width .5s; }
+.reset-label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+.reset-label b { color: var(--text); font-weight: 600; }
+
+/* ---- shift lead card ---- */
+.shift-lead-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 16px 18px; margin-bottom: 14px;
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.shift-lead-period { display: flex; align-items: center; gap: 10px; }
+.shift-lead-icon { font-size: 22px; opacity: .85; }
+.shift-lead-label { font-size: 10.5px; color: var(--text-muted); font-weight: 500; }
+.shift-lead-period-name { font-size: 14px; font-weight: 600; color: var(--transactions); }
+.shift-lead-divider { width: 1px; align-self: stretch; background: var(--border); min-height: 36px; }
+.shift-lead-person { flex: 1; min-width: 160px; }
+.shift-lead-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.shift-lead-phone { font-size: 12.5px; color: var(--text-muted); font-family: 'IBM Plex Mono', monospace; margin-top: 2px; }
 
 /* ---- circular icon navigation (home) ---- */
 .icon-nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; }
