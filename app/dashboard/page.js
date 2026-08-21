@@ -138,13 +138,10 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <PendingApprovalSection />
-      <ReturnedToTechnicianSection />
-
       <div className="home-grid">
         {boxes.map((b) => (
-          <div key={b.key} className="home-box" onClick={() => router.push(b.go)}>
-            <div className="home-box-icon">{b.icon}</div>
+          <div key={b.key} className="home-box" style={{ '--accent': b.color }} onClick={() => router.push(b.go)}>
+            <div className="home-box-icon" style={{ color: b.color }}>{b.icon}</div>
             <div className="home-box-value" style={{ color: b.color }}>{b.value}</div>
             <div className="home-box-label">{b.label}</div>
           </div>
@@ -161,6 +158,9 @@ export default function DashboardPage() {
           <div className="reset-bar-fill" style={{ width: `${resetPct}%` }} />
         </div>
       </div>
+
+      <PendingApprovalSection />
+      <ReturnedToTechnicianSection />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginTop: 22, fontSize: 11.5, color: 'var(--text-muted)' }}>
         <span>{user?.email}</span>
