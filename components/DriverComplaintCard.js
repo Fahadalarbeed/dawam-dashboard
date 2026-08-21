@@ -120,22 +120,19 @@ export function CloseForm({ report, onClosed, onTrack }) {
         closedAt: new Date().toISOString(),
       });
 
-      const driverName = report.data?.driver;
       try {
         const all = await searchReports({ from: '2000-01-01', to: '2100-01-01', type: 'complaints' });
         const fresh = all.filter((r) => r.id !== report.id);
 
-        if (driverName) {
-          const stillActive = fresh.some((r) => r.data?.driver === driverName && (r.data?.status || 'active') === 'active');
-          if (!stillActive) {
-            await supabase.from('driver_locations').delete().eq('driver', driverName);
-          }
-        }
+        // A slot just freed up — hand it to the oldest complaint still waiting,
+        // using live positions so the nearest technician gets it.
+        const { data: locs } = await supabase.from('driver_locations').select('driver, lat, lng');
+        const liveLocations = {};
+        (locs || []).forEach((l) => { liveLocations[l.driver] = { lat: l.lat, lng: l.lng }; });
 
-        // A slot just freed up — hand it to the oldest complaint still waiting.
         const waiting = pendingComplaints(fresh);
         for (const w of waiting) {
-          const pick = autoAssignDriver(fresh, w.data?.area);
+          const pick = autoAssignDriver(fresh, w.data?.area, liveLocations);
           if (!pick) break;
           await updateReportData(w.id, { driver: pick });
           const row = fresh.find((r) => r.id === w.id);
