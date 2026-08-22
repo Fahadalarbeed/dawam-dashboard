@@ -258,7 +258,8 @@ select:focus, input:focus, textarea:focus {
 .circle-btn.complaints:hover .circle-btn-ring { border-color: var(--complaints); background: var(--transactions-bg); }
 
 /* ---- tile row (repeated outages + technician stats) ---- */
-.tile-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.tile-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+@media (max-width: 700px) { .tile-row { grid-template-columns: repeat(2, 1fr); } }
 .tile-btn {
   display: flex; flex-direction: column; align-items: center; gap: 7px;
   padding: 14px 6px; border: 1px solid var(--border); border-radius: 16px;
