@@ -95,6 +95,10 @@ function isStationRepeatAction(a) {
   a = a || '';
   return a.startsWith('فيوز محطة') || a.startsWith('قاطع محطة');
 }
+function isCableRepeatAction(a) {
+  a = a || '';
+  return a.startsWith('عطل كيبل');
+}
 const ARABIC_MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 function monthLabel(monthKey) {
   const [y, m] = monthKey.split('-');
@@ -137,6 +141,8 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
   const [exportingRepeated, setExportingRepeated] = useState(false);
 
   const [showStationRepeated, setShowStationRepeated] = useState(false);
+  const [showCableRepeated, setShowCableRepeated] = useState(false);
+  const [expandedCableAddr, setExpandedCableAddr] = useState(null);
   const [stationRepeatedAreaFilter, setStationRepeatedAreaFilter] = useState([]);
   const [expandedStation, setExpandedStation] = useState(null);
   const [exportingStationRepeated, setExportingStationRepeated] = useState(false);
@@ -321,6 +327,26 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
       if (!key) return;
       if (!groups[key]) groups[key] = [];
       groups[key].push(r.data || {});
+    });
+    return Object.entries(groups)
+      .filter(([, items]) => items.length > 1)
+      .map(([address, items]) => ({ address, count: items.length, items }))
+      .sort((a, b) => b.count - a.count);
+  }, [complaints, repeatedAreaFilter]);
+
+  const cableRepeatedEntries = useMemo(() => {
+    if (!complaints) return [];
+    const source = repeatedAreaFilter.length > 0
+      ? complaints.filter((r) => repeatedAreaFilter.includes(r.data?.area))
+      : complaints;
+    const groups = {};
+    source.forEach((r) => {
+      const d = r.data || {};
+      if (!isCableRepeatAction(d.action)) return;
+      const key = addressKey(d);
+      if (!key) return;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(d);
     });
     return Object.entries(groups)
       .filter(([, items]) => items.length > 1)
@@ -684,6 +710,11 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
           <span className="tile-label">انقطاعات متكررة محطات</span>
           <span className="tile-sub">{stationRepeatedEntries.length > 0 ? `${stationRepeatedEntries.length} محطة` : 'اضغط للعرض'}</span>
         </button>
+        <button className="tile-btn" onClick={() => setShowCableRepeated((v) => !v)}>
+          <span className="tile-ring" style={{ color: 'var(--faults)' }}>🔌</span>
+          <span className="tile-label">انقطاعات متكررة كيبلات</span>
+          <span className="tile-sub">{cableRepeatedEntries.length > 0 ? `${cableRepeatedEntries.length} عنوان` : 'اضغط للعرض'}</span>
+        </button>
         <button className="tile-btn" onClick={() => setShowDriverStats((v) => !v)}>
           <span className="tile-ring" style={{ color: 'var(--daily)' }}>
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -758,6 +789,77 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
                                 );
                               })}
                               <span style={{ background: 'var(--complaints-bg)', color: 'var(--complaints)', borderRadius: 7, padding: '3px 8px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{actionText}</span>
+                              <MapLink d={d} />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {showCableRepeated && (
+        <div className="framed">
+          <div>
+            <div className="field" style={{ marginTop: 0 }}>
+              <label>المناطق (اتركه فاضي = الكل، أو حدد مناطق معينة)</label>
+              <select value="" onChange={(e) => addRepeatedArea(e.target.value)}>
+                <option value="">اختر منطقة لإضافتها...</option>
+                {availableAreas.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                {repeatedAreaFilter.map((a) => (
+                  <span key={a} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--faults-bg)', color: 'var(--faults)', borderRadius: 8, padding: '4px 8px', fontSize: 12, fontWeight: 600 }}>
+                    {a}
+                    <span onClick={() => removeRepeatedArea(a)} style={{ cursor: 'pointer', fontWeight: 800 }}>✕</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {cableRepeatedEntries.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '24px 10px', color: 'var(--text-muted)', fontSize: 12.5 }}>لا توجد عناوين متكررة</div>
+            ) : (
+              cableRepeatedEntries.map((entry, i) => {
+                const maxCount = cableRepeatedEntries[0].count;
+                const pct = Math.round((entry.count / maxCount) * 100);
+                const isOpen = expandedCableAddr === entry.address;
+                return (
+                  <div key={entry.address} style={{ marginBottom: 6 }}>
+                    <div onClick={() => setExpandedCableAddr(isOpen ? null : entry.address)} style={{
+                      display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', background: 'var(--surface)',
+                      border: '1px solid var(--border)', borderRadius: 10, cursor: 'pointer',
+                    }}>
+                      <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--faults-bg)', color: 'var(--faults)', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{i + 1}</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.address}</div>
+                        <div style={{ height: 4, background: 'var(--border)', borderRadius: 3, marginTop: 5, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: 'var(--faults)', borderRadius: 3 }} />
+                        </div>
+                      </div>
+                      <div className="mono" style={{ fontSize: 16, fontWeight: 800, color: 'var(--faults)', flexShrink: 0 }}>{entry.count}</div>
+                    </div>
+                    {isOpen && (
+                      <div style={{ padding: '8px 4px 0' }}>
+                        {entry.items.map((d, j) => {
+                          const actionText = d.action === 'أخرى' ? (d.otherAction || 'أخرى') : d.action;
+                          return (
+                            <div key={j} style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', padding: '6px 8px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 8, marginBottom: 5 }}>
+                              {FIELD_LABELS.map(([key, label, format]) => {
+                                const val = format ? format(d[key]) : d[key];
+                                if (!val) return null;
+                                return (
+                                  <span key={key} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, padding: '3px 8px', fontSize: 11, whiteSpace: 'nowrap' }}>
+                                    <span style={{ color: 'var(--text-muted)' }}>{label}:</span> <b>{val}</b>
+                                  </span>
+                                );
+                              })}
+                              <span style={{ background: 'var(--faults-bg)', color: 'var(--faults)', borderRadius: 7, padding: '3px 8px', fontSize: 11, fontWeight: 800, whiteSpace: 'nowrap' }}>{actionText}</span>
                               <MapLink d={d} />
                             </div>
                           );
