@@ -1,46 +1,59 @@
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --bg: #F3F6FB;
-  --surface: #FFFFFF;
-  --surface-2: #EAF1FA;
-  --border: #D8E3EF;
-  --text: #14213D;
-  --text-muted: #5B6B85;
-  --transactions: #2563EB;
-  --transactions-bg: rgba(37,99,235,0.08);
-  --faults: #0E9AA8;
-  --faults-bg: rgba(14,154,168,0.08);
-  --meters: #1E3A6E;
-  --meters-bg: rgba(30,58,110,0.08);
-  --daily: #5B6FE0;
-  --daily-bg: rgba(91,111,224,0.08);
-  --complaints: #B45309;
-  --complaints-bg: rgba(180,83,9,0.08);
-  --danger: #DC2626;
+  /* Navy canvas with gold accents — navy carries the identity, gold does the
+     signalling. Surfaces are lifted navy so cards separate from the background. */
+  --bg: #101B31;
+  --surface: #17243E;
+  --surface-2: #1E2D4B;
+  --border: #2E3F62;
+  --text: #EFE9DA;
+  --text-muted: #9BA8C2;
+
+  --navy: #101B31;
+  --gold: #D4B871;
+
+  --transactions: #D4B871;
+  --transactions-bg: rgba(212,184,113,0.14);
+  --faults: #E0C88A;
+  --faults-bg: rgba(224,200,138,0.14);
+  --meters: #92A9D6;
+  --meters-bg: rgba(146,169,214,0.14);
+  --daily: #C2A65E;
+  --daily-bg: rgba(194,166,94,0.14);
+  --complaints: #E8C65C;
+  --complaints-bg: rgba(232,198,92,0.16);
+
+  --danger: #E2685F;
   --whatsapp: #25D366;
-  --shadow: 0 1px 3px rgba(20,33,61,0.06);
+  --shadow: 0 1px 3px rgba(0,0,0,0.30);
 }
-html[data-theme="dark"] {
-  --bg: #0B1220;
-  --surface: #111A2C;
-  --surface-2: #16223A;
-  --border: #22314D;
-  --text: #E7EEF9;
-  --text-muted: #8AA0BF;
-  --transactions: #3B82F6;
-  --transactions-bg: rgba(59,130,246,0.15);
-  --faults: #22D3EE;
-  --faults-bg: rgba(34,211,238,0.15);
-  --meters: #60A5FA;
-  --meters-bg: rgba(96,165,250,0.15);
-  --daily: #818CF8;
-  --daily-bg: rgba(129,140,248,0.15);
-  --complaints: #F59E0B;
-  --complaints-bg: rgba(245,158,11,0.15);
-  --danger: #F87171;
+html[data-theme="light"] {
+  /* Optional lighter variant: cream canvas, navy text, same gold accents. */
+  --bg: #F6F4EE;
+  --surface: #FFFFFF;
+  --surface-2: #F1EDE2;
+  --border: #DFD6BF;
+  --text: #16233F;
+  --text-muted: #6A7183;
+
+  --navy: #16233F;
+  --gold: #B08D3F;
+
+  --transactions: #16233F;
+  --transactions-bg: rgba(22,35,63,0.07);
+  --faults: #8A6E2E;
+  --faults-bg: rgba(176,141,63,0.12);
+  --meters: #2E4272;
+  --meters-bg: rgba(46,66,114,0.08);
+  --daily: #8A6D2F;
+  --daily-bg: rgba(138,109,47,0.10);
+  --complaints: #94701A;
+  --complaints-bg: rgba(201,162,39,0.14);
+
+  --danger: #B3261E;
   --whatsapp: #25D366;
-  --shadow: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow: 0 1px 3px rgba(22,35,63,0.07);
 }
 
 * { box-sizing: border-box; }
@@ -126,7 +139,7 @@ select:focus, input:focus, textarea:focus {
 
 .btn-primary {
   margin-top: 16px; width: 100%; padding: 12px; border-radius: 12px; border: none;
-  background: var(--transactions); color: #fff; font-family: 'Cairo', sans-serif;
+  background: var(--transactions); color: var(--navy); font-family: 'Cairo', sans-serif;
   font-weight: 600; font-size: 13px; letter-spacing: .2px; cursor: pointer;
   transition: opacity .2s, transform .15s;
 }
@@ -155,7 +168,7 @@ select:focus, input:focus, textarea:focus {
   transition: border-color .2s, color .2s, background .2s;
 }
 .chip:hover { border-color: var(--text-muted); color: var(--text); }
-.chip.active { background: var(--transactions); border-color: var(--transactions); color: var(--surface); font-weight: 600; }
+.chip.active { background: var(--transactions); border-color: var(--transactions); color: var(--navy); font-weight: 600; }
 
 .badge { font-size: 10.5px; padding: 4px 9px; border-radius: 12px; font-weight: 700; }
 .badge.faults { background: var(--faults-bg); color: var(--faults); }
