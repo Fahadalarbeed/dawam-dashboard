@@ -1,14 +1,23 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-// Applies the saved theme on every page and renders the toggle button.
-// Navy ('dark') is the default identity; 'light' is the cream variant.
+// Navy is the product identity and the default everywhere. 'light' is an opt-in
+// cream variant that only applies if the user deliberately switched to it.
+// THEME_VERSION lets us reset stale preferences after a rebrand.
+const THEME_VERSION = '2';
+
 export default function ThemeToggle({ style }) {
   const [theme, setTheme] = useState('dark');
 
   useEffect(() => {
+    const storedVersion = localStorage.getItem('theme_version');
+    if (storedVersion !== THEME_VERSION) {
+      // preference predates the navy rebrand — drop it so navy shows by default
+      localStorage.removeItem('theme');
+      localStorage.setItem('theme_version', THEME_VERSION);
+    }
     const saved = localStorage.getItem('theme');
-    const next = saved === 'light' || saved === 'dark' ? saved : 'dark';
+    const next = saved === 'light' ? 'light' : 'dark';
     setTheme(next);
     document.documentElement.setAttribute('data-theme', next);
   }, []);
