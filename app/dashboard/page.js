@@ -6,6 +6,7 @@ import { searchReports, todaysStats, checkIsAdmin } from '../../lib/reportsApi';
 import ShiftLeadCard from '../../components/ShiftLeadCard';
 import PendingApprovalSection from '../../components/PendingApprovalSection';
 import ReturnedToTechnicianSection from '../../components/ReturnedToTechnicianSection';
+import ThemeToggle from '../../components/ThemeToggle';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function todayStr() {
@@ -30,16 +31,6 @@ export default function DashboardPage() {
   const [clock, setClock] = useState('');
   const [resetCountdown, setResetCountdown] = useState('--:--:--');
   const [resetPct, setResetPct] = useState(0);
-
-  const [theme, setTheme] = useState('light');
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
-  function toggleTheme() {
-    setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
-  }
 
   // auth guard
   useEffect(() => {
@@ -119,13 +110,7 @@ export default function DashboardPage() {
           <div className="mono" style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 3 }}>{clock}</div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            onClick={toggleTheme}
-            title="تبديل الوضع الليلي/النهاري"
-            style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '50%', width: 38, height: 38, fontSize: 15, cursor: 'pointer', opacity: 0.75 }}
-          >
-            {theme === 'dark' ? '☀️' : '🌙'}
-          </button>
+          <ThemeToggle />
         </div>
       </header>
 
