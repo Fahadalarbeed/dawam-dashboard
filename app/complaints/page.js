@@ -9,6 +9,8 @@ import { htmlToPdfBlob, downloadBlob, sharePdf } from '../../lib/pdf';
 import SimpleBarChart from '../../components/SimpleBarChart';
 import DriverStatsSection from '../../components/DriverStatsSection';
 import ReportModal from '../../components/ReportModal';
+import AssistantWidget from '../../components/AssistantWidget';
+import ThemeToggle from '../../components/ThemeToggle';
 
 function fmtDate(iso) {
   if (!iso) return '';
@@ -546,7 +548,8 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
     <div className="wrap">
       <header style={{ marginBottom: 18, display: 'flex', alignItems: 'center', gap: 10 }}>
         <button className="back-circle" onClick={() => router.push('/dashboard')} title="رجوع">→</button>
-        <h1 style={{ fontSize: 19, fontWeight: 700, margin: 0 }}>{isStats ? 'الإحصائيات' : 'البلاغات'}</h1>
+        <h1 style={{ fontSize: 19, fontWeight: 700, margin: 0, flex: 1 }}>{isStats ? 'الإحصائيات' : 'البلاغات'}</h1>
+        <ThemeToggle />
       </header>
 
       {!isStats && (
@@ -566,12 +569,22 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
             <div className="mono" style={{ fontSize: 22, fontWeight: 800, color: 'var(--transactions)' }}>{complaints.length}</div>
             <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>إجمالي البلاغات</div>
           </div>
-          {CATEGORY_DEFS.map((c, i) => (
-            <div key={c.key} className="card" style={{ padding: '8px 6px', textAlign: 'center', cursor: 'pointer' }} onClick={() => setSelectedCategory(selectedCategory === c.key ? null : c.key)}>
-              <div className="mono" style={{ fontSize: 22, fontWeight: 800, color: c.color }}>{categoryCounts[i]}</div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>{c.label}</div>
-            </div>
-          ))}
+          {CATEGORY_DEFS.map((c, i) => {
+            // share of all complaints in the current period — shows which fault types dominate
+            const pct = complaints.length > 0 ? (categoryCounts[i] / complaints.length) * 100 : 0;
+            return (
+              <div key={c.key} className="card" style={{ padding: '8px 6px', textAlign: 'center', cursor: 'pointer' }} onClick={() => setSelectedCategory(selectedCategory === c.key ? null : c.key)}>
+                <div className="mono" style={{ fontSize: 22, fontWeight: 800, color: c.color }}>{categoryCounts[i]}</div>
+                <div className="mono" style={{ fontSize: 11, fontWeight: 700, color: c.color, opacity: 0.85, marginTop: 1 }}>
+                  {pct.toFixed(1)}٪
+                </div>
+                <div style={{ height: 3, background: 'var(--border)', borderRadius: 2, margin: '5px 4px 0', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: c.color, borderRadius: 2 }} />
+                </div>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>{c.label}</div>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -1261,6 +1274,8 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
           onSaved={() => loadComplaints(period, customFrom, customTo)}
         />
       )}
+
+      <AssistantWidget complaints={complaints} />
     </div>
   );
 }
