@@ -167,6 +167,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
   const [searchHouse, setSearchHouse] = useState('');
   const [searchPaci, setSearchPaci] = useState('');
   const [searchPhone, setSearchPhone] = useState('');
+  const [searchStation, setSearchStation] = useState('');
   const [searchAction, setSearchAction] = useState('');
   const [showAllComplaints, setShowAllComplaints] = useState(false);
   const [showDriverStats, setShowDriverStats] = useState(false);
@@ -515,7 +516,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
     try {
       const data = await searchReports({
         from, to, type: 'complaints',
-        area: searchArea || 'all', block: searchBlock, street: searchStreet, building: searchBuilding, house: searchHouse, paci: searchPaci, action: searchAction, phone: searchPhone,
+        area: searchArea || 'all', block: searchBlock, street: searchStreet, building: searchBuilding, house: searchHouse, paci: searchPaci, action: searchAction, phone: searchPhone, station: searchStation,
       });
       setSearchResults(data);
     } catch (e) {
@@ -1150,6 +1151,7 @@ export default function ComplaintsPage({ mode = 'complaints' }) {
           <div className="field" style={{ marginTop: 0 }}><label>المنزل</label><input type="text" value={searchHouse} onChange={(e) => setSearchHouse(e.target.value)} placeholder="بحث بالمنزل" /></div>
           <div className="field" style={{ marginTop: 0, gridColumn: '1 / -1' }}><label>الرقم الآلي (PACI)</label><input type="text" value={searchPaci} onChange={(e) => setSearchPaci(e.target.value)} placeholder="بحث بالرقم الآلي" /></div>
           <div className="field" style={{ marginTop: 0, gridColumn: '1 / -1' }}><label>رقم الهاتف</label><input type="tel" value={searchPhone} onChange={(e) => setSearchPhone(e.target.value)} placeholder="بحث برقم الهاتف" /></div>
+          <div className="field" style={{ marginTop: 0, gridColumn: '1 / -1' }}><label>المحطة أو UDS</label><input type="text" value={searchStation} onChange={(e) => setSearchStation(e.target.value)} placeholder="بحث برقم المحطة أو UDS" /></div>
           <div className="field" style={{ marginTop: 0, gridColumn: '1 / -1' }}>
             <label>الإجراء</label>
             <select value={searchAction} onChange={(e) => setSearchAction(e.target.value)}>
