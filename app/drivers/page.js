@@ -24,6 +24,7 @@ export default function DriversPublicPage() {
   const [namePicked, setNamePicked] = useState(false);
   const [gpsStatus, setGpsStatus] = useState('');
   const [trackingOn, setTrackingOn] = useState(false);
+  const heartbeatRef = useRef(null);
   const loadReportsRef = useRef(null);
   const watchIdRef = useRef(null);
 
@@ -113,6 +114,24 @@ export default function DriversPublicPage() {
 
   // Live GPS tracking stays on until the technician turns it off, so staff can see
   // idle technicians too and route new complaints to whoever is actually closest.
+  // A phone suspends timers when the app is backgrounded, so re-assert the watch
+  // whenever the page becomes visible again. This is the closest a web app can
+  // get to continuous tracking — it cannot run while the app is fully closed.
+  useEffect(() => {
+    if (!trackingOn) return undefined;
+    function onVisible() {
+      if (document.visibilityState === 'visible' && watchIdRef.current === null) {
+        setTrackingOn((v) => v); // re-trigger the watch effect below
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
+    };
+  }, [trackingOn]);
+
   useEffect(() => {
     if (!namePicked || !myName || !trackingOn) {
       if (watchIdRef.current !== null) {
@@ -144,7 +163,25 @@ export default function DriversPublicPage() {
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
     );
 
+    // Phones throttle watchPosition in the background; this 60s heartbeat keeps the
+    // stored position from ageing out while the app is merely backgrounded.
+    heartbeatRef.current = setInterval(() => {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          await supabase.from('driver_locations').upsert({
+            driver: myName,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            updated_at: new Date().toISOString(),
+          });
+        },
+        () => {},
+        { enableHighAccuracy: false, maximumAge: 30000, timeout: 20000 }
+      );
+    }, 60000);
+
     return () => {
+      if (heartbeatRef.current) { clearInterval(heartbeatRef.current); heartbeatRef.current = null; }
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
@@ -205,6 +242,11 @@ export default function DriversPublicPage() {
             </div>
             <div style={{ fontSize: 10.5, color: 'var(--text-muted)', marginTop: 3 }}>
               {trackingOn ? 'موقعك يوصل للإدارة لتوزيع أقرب بلاغ لك' : 'فعّله عشان توصلك البلاغات القريبة منك'}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4, opacity: 0.85 }}>
+              {trackingOn
+                ? '⚠️ لا تسكّر التطبيق — يكفي تخليه بالخلفية'
+                : ''}
             </div>
           </div>
           <button
