@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { COMPLAINT_ACTIONS, ACTIONS_WITH_SIZE, ACTION_SIZE_OPTIONS } from '../lib/constants';
+import { COMPLAINT_ACTIONS, ACTIONS_WITH_SIZE, ACTION_SIZE_OPTIONS, ACTIONS_WITH_QUANTITY, QUANTITY_OPTIONS } from '../lib/constants';
 import { updateReportData, searchReports } from '../lib/reportsApi';
 import { supabase } from '../lib/supabaseClient';
 import DriverExtendedReportForm, { resolveExtendedReport } from './DriverExtendedReportForm';
@@ -127,6 +127,7 @@ export function CloseForm({ report, onClosed, onTrack }) {
   const [action, setAction] = useState(COMPLAINT_ACTIONS[0]);
   const [otherAction, setOtherAction] = useState('');
   const [size, setSize] = useState('');
+  const [quantity, setQuantity] = useState('1');
   const [choice, setChoice] = useState(null);
   const [station, setStation] = useState('');
   const [unitNo, setUnitNo] = useState('');
@@ -135,6 +136,7 @@ export function CloseForm({ report, onClosed, onTrack }) {
   const [saving, setSaving] = useState(false);
 
   const needsSize = ACTIONS_WITH_SIZE.includes(action);
+  const needsQuantity = ACTIONS_WITH_QUANTITY.includes(action);
   const sizeOptions = ACTION_SIZE_OPTIONS[action] || [];
   const effectiveSize = needsSize ? (size || sizeOptions[0]) : null;
   const resolution = resolveExtendedReport(action, effectiveSize);
@@ -144,6 +146,7 @@ export function CloseForm({ report, onClosed, onTrack }) {
   function handleActionChange(value) {
     setAction(value);
     setSize('');
+    setQuantity('1');
     setChoice(null);
   }
   function handleSizeChange(value) {
@@ -154,11 +157,14 @@ export function CloseForm({ report, onClosed, onTrack }) {
   async function handleClose() {
     setSaving(true);
     try {
-      const finalAction = (action === 'أخرى' ? (otherAction || 'أخرى') : action) + (needsSize && effectiveSize ? ` (${effectiveSize})` : '');
+      const qtyLabel = needsQuantity && quantity && quantity !== '1' ? ` ×${quantity}` : '';
+      const finalAction = (action === 'أخرى' ? (otherAction || 'أخرى') : action)
+        + (needsSize && effectiveSize ? ` (${effectiveSize})` : '') + qtyLabel;
       await updateReportData(report.id, {
         status: 'closed',
         action: finalAction,
         actionSize: needsSize ? effectiveSize : '',
+        quantity: needsQuantity ? quantity : '',
         station,
         unitNo,
         transNo,
@@ -172,9 +178,9 @@ export function CloseForm({ report, onClosed, onTrack }) {
 
         // A slot just freed up — hand it to the oldest complaint still waiting,
         // using live positions so the nearest technician gets it.
-        const { data: locs } = await supabase.from('driver_locations').select('driver, lat, lng');
+        const { data: locs } = await supabase.from('driver_locations').select('driver, lat, lng, updated_at');
         const liveLocations = {};
-        (locs || []).forEach((l) => { liveLocations[l.driver] = { lat: l.lat, lng: l.lng }; });
+        (locs || []).forEach((l) => { liveLocations[l.driver] = { lat: l.lat, lng: l.lng, updated_at: l.updated_at }; });
 
         const waiting = pendingComplaints(fresh);
         for (const w of waiting) {
@@ -219,6 +225,14 @@ export function CloseForm({ report, onClosed, onTrack }) {
           <label>الحجم</label>
           <select value={effectiveSize} onChange={(e) => handleSizeChange(e.target.value)}>
             {sizeOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      )}
+      {needsQuantity && (
+        <div className="field">
+          <label>العدد</label>
+          <select value={quantity} onChange={(e) => setQuantity(e.target.value)}>
+            {QUANTITY_OPTIONS.map((q) => <option key={q} value={q}>{q}</option>)}
           </select>
         </div>
       )}
