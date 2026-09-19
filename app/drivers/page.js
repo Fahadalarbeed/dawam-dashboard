@@ -43,8 +43,17 @@ export default function DriversPublicPage() {
 
   useEffect(() => {
     const saved = localStorage.getItem('my_driver_name');
-    if (saved) { setMyName(saved); setNamePicked(true); }
-    if (localStorage.getItem('tracking_on') === '1') setTrackingOn(true);
+    // A name saved before the roster changed is no longer valid — clear it and
+    // make the technician pick again, otherwise their work is filed under a
+    // name the system no longer recognises.
+    if (saved && DRIVERS_LIST.includes(saved)) {
+      setMyName(saved);
+      setNamePicked(true);
+      if (localStorage.getItem('tracking_on') === '1') setTrackingOn(true);
+    } else if (saved) {
+      localStorage.removeItem('my_driver_name');
+      localStorage.removeItem('tracking_on');
+    }
   }, []);
 
   useEffect(() => {
@@ -199,6 +208,18 @@ export default function DriversPublicPage() {
     }
   }
 
+  async function changeName() {
+    if (!confirm('تغيير الاسم؟ راح يتوقف التتبع وتختار اسمك من جديد.')) return;
+    if (myName) {
+      try { await supabase.from('driver_locations').delete().eq('driver', myName); } catch (e) { /* ignore */ }
+    }
+    localStorage.removeItem('my_driver_name');
+    localStorage.removeItem('tracking_on');
+    setTrackingOn(false);
+    setMyName('');
+    setNamePicked(false);
+  }
+
   function pickName(name) {
     setMyName(name);
     setNamePicked(true);
@@ -231,7 +252,13 @@ export default function DriversPublicPage() {
     <div className="wrap">
       <header style={{ marginBottom: 22, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ fontSize: 19, fontWeight: 800, margin: 0 }}>لوحة الفنيين</h1>
-        <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>🔧 {myName}</span>
+        <button
+          onClick={changeName}
+          title="تغيير الاسم"
+          style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: 999, padding: '5px 12px', fontSize: 11.5, color: 'var(--text-muted)', cursor: 'pointer', fontFamily: "'Cairo', sans-serif" }}
+        >
+          🔧 {myName} ⌄
+        </button>
       </header>
 
       <div className="framed" style={{ padding: 14 }}>
