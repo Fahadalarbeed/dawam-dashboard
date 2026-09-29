@@ -6,6 +6,7 @@ import { htmlToPdfBlob } from '../lib/pdf';
 import { insertReport, uploadReportPdf, updateReportData, uploadReportPhoto } from '../lib/reportsApi';
 import { playAlertTone } from '../lib/alertSound';
 import { getCurrentShiftLetter } from '../lib/shift';
+import { autoOperationsOps } from '../lib/operationsApi';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function todayStr() {
@@ -149,6 +150,10 @@ function ExtendedReportInner({ complaint, action, driverName, onSubmitted, onCan
         closedAt: new Date().toISOString(),
         linkedReportId: id,
         linkedReportType: reportType,
+        // تقرير أعطال (مو عدادات) ← يتحوّل لقسم التشغيل مباشرة بدون اعتماد
+        ...(reportType !== 'meters' && !complaintData.ops
+          ? { ops: autoOperationsOps({ action, driver: driverName, faultType: data.faultType }) }
+          : {}),
       });
 
       playAlertTone('new');

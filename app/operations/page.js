@@ -142,6 +142,7 @@ export default function OperationsPage() {
               {d.driver && <div className="ops-muted">🔧 {d.driver}</div>}
               <div className="ops-reason">
                 {o.source === 'technician' && <span className="ops-direct">⚡ مباشر من الفني</span>}
+                {o.source === 'auto' && <span className="ops-direct" style={{ background: '#E1EEFB', color: '#2A70C4' }}>🔁 تحويل تلقائي</span>}
                 <b>سبب التحويل:</b> {o.reason || '—'}
               </div>
               <div className="ops-meta">
