@@ -229,7 +229,7 @@ export default function DriverBoardInternalPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(300px,1fr))', gap: 10 }}>
           {grouped.map(([driver, items]) => (
-            <DriverGroupBox key={driver} driver={driver} reports={items} onChanged={loadReports} />
+            <DriverGroupBox key={driver} driver={driver} reports={items} onChanged={loadReports} allowTransfer />
           ))}
         </div>
       )}

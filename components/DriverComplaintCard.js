@@ -1,10 +1,12 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { COMPLAINT_ACTIONS, ACTIONS_WITH_SIZE, ACTION_SIZE_OPTIONS, ACTIONS_WITH_QUANTITY, QUANTITY_OPTIONS } from '../lib/constants';
 import { updateReportData, searchReports } from '../lib/reportsApi';
 import { supabase } from '../lib/supabaseClient';
 import DriverExtendedReportForm, { resolveExtendedReport } from './DriverExtendedReportForm';
 import { autoAssignDriver, pendingComplaints, isOverdue } from '../lib/assignment';
+import { canTransferToOps, transferToOperations, FUSE_ACTIONS, fuseMaterialFor, directStoreOps } from '../lib/operationsApi';
+import MaterialsPicker from './MaterialsPicker';
 
 export function pad(n) { return String(n).padStart(2, '0'); }
 export function todayStr() {
@@ -134,14 +136,26 @@ export function CloseForm({ report, onClosed, onTrack }) {
   const [transNo, setTransNo] = useState('');
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const [materials, setMaterials] = useState([]);
 
   const needsSize = ACTIONS_WITH_SIZE.includes(action);
+  const isFuse = FUSE_ACTIONS.includes(action);
   const needsQuantity = ACTIONS_WITH_QUANTITY.includes(action);
   const sizeOptions = ACTION_SIZE_OPTIONS[action] || [];
   const effectiveSize = needsSize ? (size || sizeOptions[0]) : null;
   const resolution = resolveExtendedReport(action, effectiveSize);
   const hideUnitNo = action === 'محطة طافية' || action === 'محول / UDS';
   const showTransNo = action === 'محول / UDS';
+
+  // تبديل فيوز: المادة الأساسية تنضاف تلقائي من الحجم والعدد، والباقي يضيفه الفني
+  useEffect(() => {
+    if (!FUSE_ACTIONS.includes(action)) { setMaterials([]); return; }
+    const base = fuseMaterialFor(action, effectiveSize, quantity);
+    setMaterials((prev) => {
+      const others = prev.filter((l) => !l.auto && !(base && l.itemId === base.itemId && l.type === base.type));
+      return base ? [base, ...others] : others;
+    });
+  }, [action, effectiveSize, quantity]);
 
   function handleActionChange(value) {
     setAction(value);
@@ -170,6 +184,8 @@ export function CloseForm({ report, onClosed, onTrack }) {
         transNo,
         note: note || '',
         closedAt: new Date().toISOString(),
+        // فيوز منزل / محطة: يتسكّر ويروح للمخزن مباشرة مع المواد
+        ...(isFuse ? { ops: directStoreOps({ materials, driver: report.data?.driver, actionLabel: finalAction }) } : {}),
       });
 
       try {
@@ -272,12 +288,21 @@ export function CloseForm({ report, onClosed, onTrack }) {
               <input type="text" value={transNo} onChange={(e) => setTransNo(e.target.value)} placeholder="رقم المحول" />
             </div>
           )}
+          {isFuse && (
+            <div className="field">
+              <label>المواد المصروفة / Materials</label>
+              <MaterialsPicker value={materials} onChange={setMaterials} />
+              <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 6, background: 'var(--faults-bg)', borderRadius: 10, padding: '7px 10px' }}>
+                🏬 عند الإغلاق يتسكّر البلاغ ويروح للمخزن مباشرة مع هالمواد
+              </div>
+            </div>
+          )}
           <div className="field">
             <label>ملاحظة (اختياري)</label>
             <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="أي ملاحظة إضافية عن الإغلاق" />
           </div>
-          <button className="btn-primary" onClick={handleClose} disabled={saving}>
-            {saving ? 'جارٍ الإغلاق...' : '🔒 تأكيد إغلاق البلاغ'}
+          <button className="btn-primary" onClick={handleClose} disabled={saving || (isFuse && materials.length === 0)}>
+            {saving ? 'جارٍ الإغلاق...' : isFuse ? '🔒 إغلاق البلاغ وإرسال للمخزن' : '🔒 تأكيد إغلاق البلاغ'}
           </button>
         </>
       )}
@@ -285,7 +310,7 @@ export function CloseForm({ report, onClosed, onTrack }) {
   );
 }
 
-export function ComplaintCard({ report, onChanged, onTrack, onDismiss }) {
+export function ComplaintCard({ report, onChanged, onTrack, onDismiss, allowTransfer }) {
   const [expanded, setExpanded] = useState(false);
   const [routeLoading, setRouteLoading] = useState(false);
   const d = report.data || {};
@@ -390,6 +415,8 @@ export function ComplaintCard({ report, onChanged, onTrack, onDismiss }) {
         </div>
       )}
 
+      {allowTransfer && isClosed && <OpsTransfer report={report} onChanged={onChanged} />}
+
       {!isClosed && (
         <>
           <button className="btn-secondary" style={{ marginTop: 10, width: '100%' }} onClick={() => setExpanded((v) => !v)}>
@@ -397,6 +424,64 @@ export function ComplaintCard({ report, onChanged, onTrack, onDismiss }) {
           </button>
           {expanded && <CloseForm report={report} onClosed={() => { setExpanded(false); onChanged(); }} />}
         </>
+      )}
+    </div>
+  );
+}
+
+// تحويل البلاغ لقسم التشغيل — يظهر فقط للبلاغ المغلق اللي فيه تقرير أعطال (مو عدادات)
+function OpsTransfer({ report, onChanged }) {
+  const d = report.data || {};
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  if (d.ops) {
+    const sent = d.ops.status === 'sent';
+    return (
+      <div style={{ marginTop: 10, fontSize: 12, fontWeight: 700, borderRadius: 10, padding: '8px 10px',
+        background: sent ? 'rgba(30,123,58,.1)' : 'var(--faults-bg)', color: sent ? '#1E7B3A' : 'var(--gold)' }}>
+        {sent ? '🏬 أُرسل للمخزن' : '📤 محوّل لقسم التشغيل'} — {fmtDateTime(sent ? d.ops.sentAt : d.ops.transferredAt)}
+        {d.ops.reason && <div style={{ fontWeight: 500, color: 'var(--text-muted)', marginTop: 2 }}>السبب: {d.ops.reason}</div>}
+      </div>
+    );
+  }
+  if (!canTransferToOps(d)) return null;
+
+  async function confirmTransfer() {
+    if (!reason.trim()) return;
+    setSaving(true);
+    try {
+      await transferToOperations(report.id, reason);
+      setOpen(false);
+      setReason('');
+      onChanged && onChanged();
+    } catch (e) {
+      alert('تعذر التحويل: ' + e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
+      {!open ? (
+        <button className="btn-secondary" style={{ width: '100%', marginTop: 0 }} onClick={() => setOpen(true)}>
+          📤 تحويل لقسم التشغيل / Transfer to Operations
+        </button>
+      ) : (
+        <div style={{ background: 'var(--surface-2)', border: '1px solid var(--gold)', borderRadius: 12, padding: 10 }}>
+          <div className="field" style={{ marginTop: 0 }}>
+            <label>سبب التحويل / Reason</label>
+            <textarea rows={2} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="مثال: يحتاج حفر وتبديل كيبل" autoFocus />
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button className="btn-primary" style={{ flex: 1, marginTop: 0 }} disabled={saving || !reason.trim()} onClick={confirmTransfer}>
+              {saving ? 'جارٍ التحويل...' : 'تأكيد التحويل'}
+            </button>
+            <button className="btn-secondary" style={{ flex: 1, marginTop: 0 }} disabled={saving} onClick={() => { setOpen(false); setReason(''); }}>إلغاء</button>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -425,7 +510,7 @@ function saveDismissedIds(set) {
   } catch (e) { /* ignore */ }
 }
 
-export function DriverGroupBox({ driver, reports, onChanged, onTrack }) {
+export function DriverGroupBox({ driver, reports, onChanged, onTrack, allowTransfer }) {
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState(() => (typeof window !== 'undefined' ? getDismissedIds() : new Set()));
 
@@ -457,7 +542,7 @@ export function DriverGroupBox({ driver, reports, onChanged, onTrack }) {
           {visibleReports.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '14px 10px', color: 'var(--text-muted)', fontSize: 12 }}>ما فيه بلاغات ظاهرة (تم إخفاء الباقي)</div>
           ) : (
-            visibleReports.map((r) => <ComplaintCard key={r.id} report={r} onChanged={onChanged} onTrack={onTrack} onDismiss={handleDismiss} />)
+            visibleReports.map((r) => <ComplaintCard key={r.id} report={r} onChanged={onChanged} onTrack={onTrack} onDismiss={handleDismiss} allowTransfer={allowTransfer} />)
           )}
         </div>
       )}

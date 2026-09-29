@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { key: 'reports', href: '/reports', icon: '📄', label: 'التقارير', color: 'var(--transactions)', bg: 'var(--transactions-bg)' },
   { key: 'technicians', href: '/driver-board', icon: '🔧', label: 'لوحة الفنيين', color: 'var(--daily)', bg: 'var(--daily-bg)' },
   { key: 'stats', href: '/stats', icon: '📊', label: 'الإحصائيات', color: 'var(--meters)', bg: 'var(--meters-bg)' },
+  { key: 'operations', href: '/operations', icon: '🛠️', label: 'التشغيل', color: 'var(--faults)', bg: 'var(--faults-bg)' },
 ];
 
 export default function DashboardPage() {
@@ -114,7 +115,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <div className="icon-nav">
+      <div className="icon-nav" style={{ gridTemplateColumns: `repeat(${NAV_ITEMS.length}, 1fr)`, gap: 6 }}>
         {NAV_ITEMS.map((item) => (
           <button key={item.key} className="icon-nav-btn" onClick={() => router.push(item.href)}>
             <span className="icon-nav-circle" style={{ background: item.bg, color: item.color }}>{item.icon}</span>
