@@ -4,9 +4,11 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '../../../lib/supabaseClient';
 import {
   listActiveGenerators, searchGenerators, addGenerator, removeGenerator, setGeneratorStatus,
-  generatorDays, totalKva,
+  generatorDays,
 } from '../../../lib/generatorsApi';
 import { getCurrentShiftLetter } from '../../../lib/shift';
+import { htmlToPdfBlob, downloadBlob, sharePdf } from '../../../lib/pdf';
+import { buildGeneratorsDoc } from '../../../lib/generatorsReport';
 
 // مولدات محافظة الفروانية — داخل قسم التشغيل
 const STATUS = { running: 'شغال', standby: 'ستاند باي' };
@@ -41,6 +43,8 @@ export default function GeneratorsPage() {
   const [search, setSearch] = useState({ by: 'connected', from: '', to: '' });
   const [results, setResults] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [removing, setRemoving] = useState(null);   // المولد اللي ينزال
+  const [printing, setPrinting] = useState('');
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -90,12 +94,35 @@ export default function GeneratorsPage() {
   }, [results, active, filter]);
   const rowsCount = rows.reduce((s, g) => s + (g.gen_count || 1), 0);
 
-  async function handleRemove(g) {
-    if (!confirm(`إزالة المولد ${g.gen_no || ''} — ${g.area}؟\nRemove this generator?`)) return;
+  async function confirmRemove(name) {
+    const g = removing;
     setBusyId(g.id);
-    try { await removeGenerator(g.id); await load(); }
-    catch (e) { alert('تعذر الإزالة: ' + e.message); }
+    try {
+      try { localStorage.setItem('gen_remover_name', name); } catch { /* ignore */ }
+      await removeGenerator(g.id, name);
+      setRemoving(null);
+      await load();
+    } catch (e) { alert('تعذر الإزالة: ' + e.message); }
     finally { setBusyId(null); }
+  }
+
+  // طباعة / مشاركة الجدول الظاهر (بعد الفلتر والبحث)
+  async function makePdf(mode) {
+    if (!rows.length) { alert('ما فيه مولدات بالجدول'); return; }
+    setPrinting(mode);
+    try {
+      const label = { running: 'الشغالة', standby: 'ستاند باي', LT: 'LT', HT: 'HT' }[filter] || '';
+      const range = results ? `${search.by === 'removed' ? 'الإزالة' : 'الإيصال'} ${search.from || '…'} → ${search.to || '…'}` : '';
+      const blob = await htmlToPdfBlob(buildGeneratorsDoc(rows, { title: [label, range].filter(Boolean).join(' — ') }), 'l', 2);
+      const name = `مولدات-الفروانية-${todayISO()}.pdf`;
+      if (mode === 'share') await sharePdf(blob, name);
+      else {
+        const url = URL.createObjectURL(blob);
+        const w = window.open(url, '_blank');
+        if (!w) downloadBlob(blob, name);
+      }
+    } catch (e) { alert('تعذر إنشاء الملف: ' + e.message); }
+    finally { setPrinting(''); }
   }
   async function handleToggle(g) {
     setBusyId(g.id);
@@ -111,8 +138,8 @@ export default function GeneratorsPage() {
   const CARDS = [
     ['running', summary.running, 'المولدات الشغالة', 'Running', '#1E7B3A'],
     ['standby', summary.standby, 'ستاند باي', 'Standby', '#B97F00'],
-    ['LT', summary.LT, 'LT — أقل من 1000 kVA', 'Low tension', '#13896A'],
-    ['HT', summary.HT, 'HT — 1000 kVA وأكثر', 'High tension', '#D0592F'],
+    ['LT', summary.LT, 'LT', '', '#13896A'],
+    ['HT', summary.HT, 'HT', '', '#D0592F'],
   ];
   const TABS = [['all', 'الكل'], ['running', 'شغال'], ['standby', 'ستاند باي'], ['HT', 'HT'], ['LT', 'LT']];
 
@@ -134,7 +161,7 @@ export default function GeneratorsPage() {
         {CARDS.map(([key, n, ar, en, color]) => (
           <button key={key} className={`gen-card${filter === key ? ' on' : ''}`} style={{ borderTopColor: color }} onClick={() => setFilter(filter === key ? 'all' : key)}>
             <div className="gen-n mono" style={{ color }}>{active ? n : '…'}</div>
-            <div className="gen-l">{ar}<En>{en}</En></div>
+            <div className="gen-l">{ar}{en && <En>{en}</En>}</div>
           </button>
         ))}
         <div className="gen-card wide" style={{ borderTopColor: '#B08D3F' }}>
@@ -146,6 +173,8 @@ export default function GeneratorsPage() {
       <div className="gen-bar">
         <button className="gen-btn gold" onClick={() => setShowForm(true)}>➕ إدخال مولد جديد</button>
         <button className={`gen-btn ghost${showSearch ? ' on' : ''}`} onClick={() => setShowSearch((v) => !v)}>📅 بحث بالتاريخ</button>
+        <button className="gen-btn ghost" disabled={!!printing} onClick={() => makePdf('print')}>{printing === 'print' ? '...' : '🖨️ طباعة'}</button>
+        <button className="gen-btn ghost" disabled={!!printing} onClick={() => makePdf('share')}>{printing === 'share' ? '...' : '📤 مشاركة'}</button>
       </div>
 
       {showSearch && (
@@ -219,10 +248,13 @@ export default function GeneratorsPage() {
                   <td className="gen-notes">{g.notes}</td>
                   <td>
                     {removed ? (
-                      <span style={{ fontSize: 11 }}>مُزال {fmtDate(g.removed_at)}</span>
+                      <span className="gen-removed">
+                        مُزال {fmtDate(g.removed_at)} <span className="mono">{new Date(g.removed_at).toTimeString().slice(0, 5)}</span>
+                        <br />👤 {g.removed_by || g.removed_by_email || '—'}
+                      </span>
                     ) : (
                       <div style={{ display: 'flex', gap: 4 }}>
-                        <button className="gen-rm" disabled={busyId === g.id} onClick={() => handleRemove(g)}>🗑️ إزالة المولد</button>
+                        <button className="gen-rm" disabled={busyId === g.id} onClick={() => setRemoving(g)}>🗑️ إزالة المولد</button>
                         <button className="gen-sw" disabled={busyId === g.id} onClick={() => handleToggle(g)}>{sb ? '← شغال' : '← ستاند باي'}</button>
                       </div>
                     )}
@@ -242,7 +274,37 @@ export default function GeneratorsPage() {
       </div>
       <div className="gen-hint" style={{ textAlign: 'center' }}>الجدول يتمرر يمين ويسار · Scroll sideways</div>
 
+      {removing && <RemoveDialog g={removing} busy={busyId === removing.id} onCancel={() => setRemoving(null)} onConfirm={confirmRemove} />}
       {showForm && <GeneratorForm onClose={() => setShowForm(false)} onSaved={async () => { setShowForm(false); await load(); }} />}
+    </div>
+  );
+}
+
+function RemoveDialog({ g, busy, onCancel, onConfirm }) {
+  const [name, setName] = useState(() => { try { return localStorage.getItem('gen_remover_name') || ''; } catch { return ''; } });
+  return (
+    <div className="gen-overlay" onClick={onCancel}>
+      <div className="gen-sheet" onClick={(e) => e.stopPropagation()} role="dialog" style={{ maxWidth: 440 }}>
+        <div className="gen-grip" />
+        <div style={{ fontWeight: 800, fontSize: 17 }}>إزالة المولد<En>Remove generator</En></div>
+        <div className="gen-rm-info">
+          <b>{g.gen_type}</b> — {g.area}{g.block ? ` — قطعة ${g.block}` : ''}{g.gen_no ? ` — مولد ${g.gen_no}` : ''}
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>موصول من {fmtDate(g.connected_on)} — {generatorDays(g)} يوم</div>
+        </div>
+        <div className="gen-fg">
+          <div className="full">
+            <label>اسم اللي أزال المولد *<span>Removed by</span></label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="الاسم" autoFocus />
+          </div>
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 6 }}>🕐 وقت الإزالة ينحفظ تلقائي — {fmtDate(todayISO())} {new Date().toTimeString().slice(0, 5)}</div>
+        <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+          <button className="gen-save" style={{ marginTop: 0, background: '#B3261E', flex: 2 }} disabled={busy || !name.trim()} onClick={() => onConfirm(name.trim())}>
+            {busy ? 'جارٍ الإزالة...' : '🗑️ تأكيد الإزالة'}
+          </button>
+          <button className="gen-btn ghost" style={{ flex: 1 }} onClick={onCancel}>إلغاء</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -252,8 +314,6 @@ function GeneratorForm({ onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
 
-  const kva = totalKva(f.size_kva);
-  const suggested = kva ? (kva >= 1000 ? 'HT' : 'LT') : '';
   // النوبة والتاريخ تلقائي: النوبة المناوبة الحين + تاريخ اليوم
   const autoShift = getCurrentShiftLetter();
   const autoDate = todayISO();
@@ -293,12 +353,9 @@ function GeneratorForm({ onClose, onSaved }) {
         <div className="gen-fs">
           <h4>⚡ نوع المولد *</h4>
           <div className="gen-big">
-            <button className={`lt${f.gen_type === 'LT' ? ' on' : ''}`} onClick={() => setF({ ...f, gen_type: 'LT' })}><b>LT</b><small>أقل من 1000 kVA</small></button>
-            <button className={`ht${f.gen_type === 'HT' ? ' on' : ''}`} onClick={() => setF({ ...f, gen_type: 'HT' })}><b>HT</b><small>1000 kVA وأكثر</small></button>
+            <button className={`lt${f.gen_type === 'LT' ? ' on' : ''}`} onClick={() => setF({ ...f, gen_type: 'LT' })}><b>LT</b></button>
+            <button className={`ht${f.gen_type === 'HT' ? ' on' : ''}`} onClick={() => setF({ ...f, gen_type: 'HT' })}><b>HT</b></button>
           </div>
-          {suggested && f.gen_type && suggested !== f.gen_type && (
-            <div className="gen-warn">⚠️ الحجم {f.size_kva} kVA عادة {suggested} — تأكد من الاختيار</div>
-          )}
         </div>
 
         <div className="gen-fs">
@@ -435,6 +492,9 @@ const CSS = `
 .gen-auto div { background: var(--surface-2); border-radius: 12px; padding: 8px 12px; display: flex; flex-direction: column; }
 .gen-auto span { font-size: 11px; color: var(--text-muted); }
 .gen-auto b { font-size: 18px; font-weight: 800; color: var(--navy); }
+.gen-removed { font-size: 11px; line-height: 1.5; display: inline-block; text-align: right; }
+.gen-rm-info { background: #FDF1EF; border: 1px solid #E6B3AE; border-radius: 12px; padding: 10px 12px; margin: 12px 0 4px; font-size: 13.5px; }
+.gen-btn:disabled { opacity: .55; }
 .gen-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .gen-chips button { min-width: 44px; padding: 8px 12px; border-radius: 999px; border: 1.5px solid var(--border); background: var(--surface); font-family: 'Cairo', sans-serif; font-size: 13.5px; font-weight: 700; cursor: pointer; color: var(--text); }
 .gen-chips button.on { background: var(--navy); border-color: var(--navy); color: #fff; }

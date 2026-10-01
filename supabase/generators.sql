@@ -21,3 +21,6 @@ alter table public.generators enable row level security;
 create policy "authenticated can read generators" on public.generators for select to authenticated using (true);
 create policy "authenticated can insert generators" on public.generators for insert to authenticated with check (true);
 create policy "authenticated can update generators" on public.generators for update to authenticated using (true) with check (true);
+
+-- اسم اللي أزال المولد + إيميل الحساب
+alter table public.generators add column if not exists removed_by_email text;
