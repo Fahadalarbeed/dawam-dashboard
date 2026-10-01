@@ -6,9 +6,9 @@ import {
   listActiveGenerators, searchGenerators, addGenerator, removeGenerator, setGeneratorStatus,
   generatorDays, totalKva,
 } from '../../../lib/generatorsApi';
+import { getCurrentShiftLetter } from '../../../lib/shift';
 
 // مولدات محافظة الفروانية — داخل قسم التشغيل
-const SHIFTS = ['A', 'B', 'C', 'D', 'E'];
 const STATUS = { running: 'شغال', standby: 'ستاند باي' };
 
 function todayISO() {
@@ -254,7 +254,10 @@ function GeneratorForm({ onClose, onSaved }) {
 
   const kva = totalKva(f.size_kva);
   const suggested = kva ? (kva >= 1000 ? 'HT' : 'LT') : '';
-  const valid = f.gen_type && f.area.trim() && f.connected_on;
+  // النوبة والتاريخ تلقائي: النوبة المناوبة الحين + تاريخ اليوم
+  const autoShift = getCurrentShiftLetter();
+  const autoDate = todayISO();
+  const valid = f.gen_type && f.area.trim();
 
   async function save() {
     if (!valid) return;
@@ -262,6 +265,8 @@ function GeneratorForm({ onClose, onSaved }) {
     try {
       const row = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, typeof v === 'string' ? (v.trim() || null) : v]));
       row.gen_count = Math.max(1, parseInt(f.gen_count, 10) || 1);
+      row.shift = getCurrentShiftLetter();
+      row.connected_on = todayISO();
       await addGenerator(row);
       await onSaved();
     } catch (e) {
@@ -336,14 +341,12 @@ function GeneratorForm({ onClose, onSaved }) {
         </div>
 
         <div className="gen-fs">
-          <h4>🗓️ النوبة والتاريخ</h4>
-          <div className="gen-chips">
-            {SHIFTS.map((s) => (
-              <button key={s} className={f.shift === s ? 'on' : ''} onClick={() => setF({ ...f, shift: f.shift === s ? '' : s })}>{s}</button>
-            ))}
+          <h4>🗓️ النوبة والتاريخ <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: 11 }}>— تلقائي</span></h4>
+          <div className="gen-auto">
+            <div><span>النوبة</span><b>{autoShift}</b></div>
+            <div><span>تاريخ الإيصال</span><b className="mono">{fmtDate(autoDate)}</b></div>
           </div>
           <div className="gen-fg" style={{ marginTop: 8 }}>
-            {Field({ k: 'connected_on', label: 'تاريخ الإيصال *', en: 'Connected', type: 'date', full: true })}
             <div className="full">
               <label>ملاحظات<span>Notes</span></label>
               <textarea rows={2} value={f.notes} onChange={set('notes')} placeholder="مثال: تخفيف أحمال" />
@@ -354,7 +357,7 @@ function GeneratorForm({ onClose, onSaved }) {
         <button className="gen-save" disabled={!valid || saving} onClick={save}>
           {saving ? 'جارٍ الحفظ...' : '💾 حفظ المولد / Save'}
         </button>
-        {!valid && <div className="gen-hint" style={{ textAlign: 'center' }}>الخانات المطلوبة: نوع المولد، المنطقة، تاريخ الإيصال</div>}
+        {!valid && <div className="gen-hint" style={{ textAlign: 'center' }}>الخانات المطلوبة: نوع المولد، المنطقة</div>}
       </div>
     </div>
   );
@@ -428,6 +431,10 @@ const CSS = `
 .gen-big .sb.on { border-color: #B97F00; background: #FFF1CC; color: #8A5A00; }
 .gen-big .on small { color: inherit; }
 .gen-warn { font-size: 11.5px; color: #8A5A00; background: #FFF1CC; border-radius: 10px; padding: 6px 10px; margin-top: 8px; }
+.gen-auto { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.gen-auto div { background: var(--surface-2); border-radius: 12px; padding: 8px 12px; display: flex; flex-direction: column; }
+.gen-auto span { font-size: 11px; color: var(--text-muted); }
+.gen-auto b { font-size: 18px; font-weight: 800; color: var(--navy); }
 .gen-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .gen-chips button { min-width: 44px; padding: 8px 12px; border-radius: 999px; border: 1.5px solid var(--border); background: var(--surface); font-family: 'Cairo', sans-serif; font-size: 13.5px; font-weight: 700; cursor: pointer; color: var(--text); }
 .gen-chips button.on { background: var(--navy); border-color: var(--navy); color: #fff; }
