@@ -7,6 +7,7 @@ import {
   generatorDays,
 } from '../../../lib/generatorsApi';
 import { getCurrentShiftLetter } from '../../../lib/shift';
+import { AREA_LIST } from '../../../lib/constants';
 import { htmlToPdfBlob, downloadBlob, sharePdf } from '../../../lib/pdf';
 import { buildGeneratorsDoc } from '../../../lib/generatorsReport';
 
@@ -369,7 +370,13 @@ function GeneratorForm({ onClose, onSaved }) {
         <div className="gen-fs">
           <h4>📍 العنوان</h4>
           <div className="gen-fg">
-            {Field({ k: 'area', label: 'المنطقة *', en: 'Area', full: true })}
+            <div className="full">
+              <label>المنطقة *<span>Area</span></label>
+              <select value={f.area} onChange={set('area')}>
+                <option value="">— اختر المنطقة —</option>
+                {AREA_LIST.map((a) => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
             {Field({ k: 'block', label: 'القطعة', en: 'Block' })}
             {Field({ k: 'street', label: 'الشارع', en: 'Street' })}
             {Field({ k: 'plot', label: 'رقم القسيمة', en: 'Plot', full: true })}
