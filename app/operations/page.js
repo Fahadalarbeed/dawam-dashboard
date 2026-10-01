@@ -99,6 +99,12 @@ export default function OperationsPage() {
         </div>
       </header>
 
+      <button className="ops-gen-link" onClick={() => router.push('/operations/generators')}>
+        <span style={{ fontSize: 22 }}>⚡</span>
+        <span style={{ flex: 1, textAlign: 'right', lineHeight: 1.3 }}>المولدات<En>Generators — HT / LT</En></span>
+        <span style={{ fontSize: 18, color: 'var(--text-muted)' }}>‹</span>
+      </button>
+
       <div className="ops-search">
         <span aria-hidden="true">🔍</span>
         <input
@@ -328,6 +334,11 @@ function OpsBody({ report, onChanged, onSent }) {
 
 const CSS = `
 .en-sub { display: block; font-size: 10.5px; font-weight: 500; color: var(--text-muted); direction: ltr; font-family: 'Cairo', sans-serif; }
+.ops-gen-link {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 14px; margin-bottom: 12px;
+  background: var(--surface); border: 1.5px solid var(--gold); border-radius: 16px; box-shadow: var(--shadow);
+  font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 800; color: var(--text); cursor: pointer;
+}
 .ops-search {
   display: flex; align-items: center; gap: 8px; padding: 0 12px; margin-bottom: 12px;
   background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
