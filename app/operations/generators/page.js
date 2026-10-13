@@ -13,6 +13,7 @@ import { buildGeneratorsDoc } from '../../../lib/generatorsReport';
 
 // مولدات محافظة الفروانية — داخل قسم التشغيل
 const GEN_SIZES = ['1800', '1250', '1150', '1000', '950', '850', '750', '625', '500', '450', '320', '180', '150'];
+const INSTALL_REASONS = ['تخفيف الأحمال', 'عطل بالمحول', 'صيانة', 'كيبل فولتي', 'قطع مبرمج', 'خط مين', 'تقسيم أحمال', 'أخرى'];
 const STATUS = { running: 'شغال', standby: 'ستاند باي' };
 
 function todayISO() {
@@ -31,7 +32,7 @@ function En({ children, style }) {
 const EMPTY = {
   gen_type: '', status: 'running', area: '', block: '', street: '', plot: '',
   station: '', uds: '', spur: '', transformer: '', unit_no: '',
-  gen_count: 1, size_kva: '', gen_no: '', wires: '', shift: '', connected_on: '', notes: '',
+  gen_count: 1, size_kva: '', gen_no: '', wires: '', shift: '', connected_on: '', notes: '', install_reason: '',
 };
 
 export default function GeneratorsPage() {
@@ -216,6 +217,7 @@ export default function GeneratorsPage() {
               <th className="grp" rowSpan={2}>النوبة</th>
               <th className="grp" rowSpan={2}>التاريخ</th>
               <th className="grp" rowSpan={2}>الأيام</th>
+              <th className="grp" rowSpan={2}>سبب التركيب</th>
               <th className="grp" rowSpan={2}>ملاحظات</th>
               <th className="grp" rowSpan={2}>إجراء</th>
             </tr>
@@ -226,9 +228,9 @@ export default function GeneratorsPage() {
             </tr>
           </thead>
           <tbody>
-            {active === null && <tr><td colSpan={21} className="gen-empty">جارٍ التحميل...</td></tr>}
+            {active === null && <tr><td colSpan={22} className="gen-empty">جارٍ التحميل...</td></tr>}
             {active !== null && rows.length === 0 && (
-              <tr><td colSpan={21} className="gen-empty">{results ? 'لا توجد نتائج' : 'لا توجد مولدات — اضغط "إدخال مولد جديد"'}</td></tr>
+              <tr><td colSpan={22} className="gen-empty">{results ? 'لا توجد نتائج' : 'لا توجد مولدات — اضغط "إدخال مولد جديد"'}</td></tr>
             )}
             {rows.map((g, i) => {
               const removed = !!g.removed_at;
@@ -247,6 +249,7 @@ export default function GeneratorsPage() {
                   <td><b>{g.shift}</b></td>
                   <td className="mono">{fmtDate(g.connected_on)}</td>
                   <td className="mono"><b>{generatorDays(g)}</b></td>
+                  <td className="gen-notes"><b>{g.install_reason}</b></td>
                   <td className="gen-notes">{g.notes}</td>
                   <td>
                     {removed ? (
@@ -268,7 +271,7 @@ export default function GeneratorsPage() {
               <tr className="tot">
                 <td colSpan={10} style={{ textAlign: 'left' }}>المجموع / Total</td>
                 <td className="mono">{rowsCount}</td>
-                <td colSpan={10}></td>
+                <td colSpan={11}></td>
               </tr>
             )}
           </tbody>
@@ -327,13 +330,16 @@ function GeneratorForm({ onClose, onSaved }) {
   // النوبة والتاريخ تلقائي: النوبة المناوبة الحين + تاريخ اليوم
   const autoShift = getCurrentShiftLetter();
   const autoDate = todayISO();
-  const valid = f.gen_type && f.area.trim();
+  const [otherReason, setOtherReason] = useState('');
+  const reasonOk = f.install_reason && (f.install_reason !== 'أخرى' || otherReason.trim());
+  const valid = f.gen_type && f.area.trim() && reasonOk;
 
   async function save() {
     if (!valid) return;
     setSaving(true);
     try {
       const row = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, typeof v === 'string' ? (v.trim() || null) : v]));
+      if (f.install_reason === 'أخرى') row.install_reason = `أخرى - ${otherReason.trim()}`;
       row.gen_count = Math.max(1, parseInt(f.gen_count, 10) || 1);
       row.shift = getCurrentShiftLetter();
       row.connected_on = todayISO();
@@ -374,6 +380,20 @@ function GeneratorForm({ onClose, onSaved }) {
             <button className={`run${f.status === 'running' ? ' on' : ''}`} onClick={() => setF({ ...f, status: 'running' })}><b className="t">شغال</b><small>Running</small></button>
             <button className={`sb${f.status === 'standby' ? ' on' : ''}`} onClick={() => setF({ ...f, status: 'standby' })}><b className="t">ستاند باي</b><small>Standby</small></button>
           </div>
+        </div>
+
+        <div className="gen-fs">
+          <h4>📝 سبب التركيب *</h4>
+          <div className="gen-chips">
+            {INSTALL_REASONS.map((r) => (
+              <button key={r} type="button" className={f.install_reason === r ? 'on' : ''} onClick={() => setF({ ...f, install_reason: r })}>{r}</button>
+            ))}
+          </div>
+          {f.install_reason === 'أخرى' && (
+            <div className="gen-fg" style={{ marginTop: 8 }}>
+              <div className="full"><input value={otherReason} onChange={(e) => setOtherReason(e.target.value)} placeholder="اكتب السبب" /></div>
+            </div>
+          )}
         </div>
 
         <div className="gen-fs">
@@ -445,7 +465,7 @@ function GeneratorForm({ onClose, onSaved }) {
         <button className="gen-save" disabled={!valid || saving} onClick={save}>
           {saving ? 'جارٍ الحفظ...' : '💾 حفظ المولد / Save'}
         </button>
-        {!valid && <div className="gen-hint" style={{ textAlign: 'center' }}>الخانات المطلوبة: نوع المولد، المنطقة</div>}
+        {!valid && <div className="gen-hint" style={{ textAlign: 'center' }}>الخانات المطلوبة: نوع المولد، سبب التركيب، المنطقة</div>}
       </div>
     </div>
   );

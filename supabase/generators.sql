@@ -24,3 +24,6 @@ create policy "authenticated can update generators" on public.generators for upd
 
 -- اسم اللي أزال المولد + إيميل الحساب
 alter table public.generators add column if not exists removed_by_email text;
+
+-- سبب التركيب
+alter table public.generators add column if not exists install_reason text;
