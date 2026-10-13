@@ -12,6 +12,7 @@ import { htmlToPdfBlob, downloadBlob, sharePdf } from '../../../lib/pdf';
 import { buildGeneratorsDoc } from '../../../lib/generatorsReport';
 
 // مولدات محافظة الفروانية — داخل قسم التشغيل
+const GEN_SIZES = ['1800', '1250', '1150', '1000', '950', '850', '750', '625', '500', '450', '320', '180', '150'];
 const STATUS = { running: 'شغال', standby: 'ستاند باي' };
 
 function todayISO() {
@@ -314,6 +315,14 @@ function GeneratorForm({ onClose, onSaved }) {
   const [f, setF] = useState({ ...EMPTY, connected_on: todayISO() });
   const [saving, setSaving] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  // الحجم: مولد واحد ← اختيار واحد، أكثر من مولد ← يتجمّع مثل 500+625
+  const sizes = f.size_kva ? String(f.size_kva).split('+') : [];
+  function pickSize(sz) {
+    const max = Math.max(1, parseInt(f.gen_count, 10) || 1);
+    if (max === 1) { setF({ ...f, size_kva: f.size_kva === sz ? '' : sz }); return; }
+    const next = sizes.length >= max ? [sz] : [...sizes, sz];
+    setF({ ...f, size_kva: next.join('+') });
+  }
 
   // النوبة والتاريخ تلقائي: النوبة المناوبة الحين + تاريخ اليوم
   const autoShift = getCurrentShiftLetter();
@@ -398,7 +407,22 @@ function GeneratorForm({ onClose, onSaved }) {
           <h4>⚙️ بيانات المولد</h4>
           <div className="gen-fg">
             {Field({ k: 'gen_count', label: 'عدد المولدات', type: 'number', min: 1, inputMode: 'numeric' })}
-            {Field({ k: 'size_kva', label: 'حجم المولد kVA', placeholder: 'مثال: 1800 أو 500+625' })}
+            <div className="full">
+              <label>حجم المولد kVA<span>{Number(f.gen_count) > 1 ? `اختر ${f.gen_count} أحجام` : 'Size'}</span></label>
+              <div className="gen-chips gen-sizes">
+                {GEN_SIZES.map((sz) => {
+                  const picked = sizes.filter((x) => x === sz).length;
+                  return (
+                    <button key={sz} type="button" className={picked ? 'on' : ''} onClick={() => pickSize(sz)}>
+                      {sz}{picked > 1 ? ` ×${picked}` : ''}
+                    </button>
+                  );
+                })}
+              </div>
+              {Number(f.gen_count) > 1 && sizes.length > 0 && (
+                <div className="gen-hint">المختار: <b className="mono">{f.size_kva}</b> <button type="button" className="gen-link" onClick={() => setF({ ...f, size_kva: '' })}>مسح</button></div>
+              )}
+            </div>
             {Field({ k: 'gen_no', label: 'رقم المولد', en: 'Gen. No' })}
             {Field({ k: 'wires', label: 'عدد الوايرات', en: 'Wires' })}
           </div>
@@ -502,6 +526,7 @@ const CSS = `
 .gen-removed { font-size: 11px; line-height: 1.5; display: inline-block; text-align: right; }
 .gen-rm-info { background: #FDF1EF; border: 1px solid #E6B3AE; border-radius: 12px; padding: 10px 12px; margin: 12px 0 4px; font-size: 13.5px; }
 .gen-btn:disabled { opacity: .55; }
+.gen-sizes button { min-width: 64px; font-family: 'IBM Plex Mono', monospace; }
 .gen-chips { display: flex; gap: 6px; flex-wrap: wrap; }
 .gen-chips button { min-width: 44px; padding: 8px 12px; border-radius: 999px; border: 1.5px solid var(--border); background: var(--surface); font-family: 'Cairo', sans-serif; font-size: 13.5px; font-weight: 700; cursor: pointer; color: var(--text); }
 .gen-chips button.on { background: var(--navy); border-color: var(--navy); color: #fff; }
