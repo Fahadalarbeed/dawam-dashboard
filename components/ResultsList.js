@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { downloadReportPdf, deleteReport } from '../lib/reportsApi';
 import { downloadBlob, sharePdf, mergePdfBlobs } from '../lib/pdf';
 import { buildMergedDailyDoc, buildMergedMetersDoc, buildMergedFaultsDoc } from '../lib/templates';
@@ -7,6 +7,8 @@ import { htmlToPdfBlob } from '../lib/pdf';
 import MetricsChart from './MetricsChart';
 import ReportPhotosModal, { reportHasPhotos } from './ReportPhotos';
 import ReportPreviewModal from './ReportPreviewModal';
+import FaultLifecycleModal from './FaultLifecycleModal';
+import { complaintsForReports, faultLifecycle } from '../lib/faultLifecycle';
 
 function fmtDate(iso) {
   const d = new Date(iso);
@@ -22,6 +24,15 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
   const [showChart, setShowChart] = useState(false);
   const [photosReport, setPhotosReport] = useState(null);
   const [previewReport, setPreviewReport] = useState(null);
+  const [lifecycleReport, setLifecycleReport] = useState(null);
+  const [complaintsMap, setComplaintsMap] = useState({});
+
+  // البلاغات المربوطة بتقارير الأعطال ← عشان نعرف آخر مرحلة وصلها كل تقرير
+  useEffect(() => {
+    let cancelled = false;
+    complaintsForReports(results).then((m) => { if (!cancelled) setComplaintsMap(m); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [results]);
 
   async function handleOpen(r) {
     try {
@@ -173,11 +184,17 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
           background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, marginBottom: 8,
         }}>
           <span className={`badge ${r.type}`}>{badgeLabel[r.type]}</span>
-          <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => handleOpen(r)}>
+          <div style={{ flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={() => (r.type === 'faults' ? setLifecycleReport(r) : handleOpen(r))}>
             <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {r.display_name}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }} className="mono">{fmtDate(r.report_date)}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span className="mono">{fmtDate(r.report_date)}</span>
+              {r.type === 'faults' && (() => {
+                const l = faultLifecycle(r, complaintsMap[r.id]);
+                return <span style={{ background: l.bg, color: l.color, borderRadius: 999, padding: '1px 8px', fontSize: 10.5, fontWeight: 700 }}>{l.label}</span>;
+              })()}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
             <button onClick={() => setPreviewReport(r)} title="معاينة" style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 15 }}>👁️</button>
@@ -207,6 +224,9 @@ export default function ResultsList({ results, activeType, isAdmin, onChanged, s
 
       {photosReport && (
         <ReportPhotosModal report={photosReport} onClose={() => setPhotosReport(null)} />
+      )}
+      {lifecycleReport && (
+        <FaultLifecycleModal report={lifecycleReport} complaint={complaintsMap[lifecycleReport.id]} onClose={() => setLifecycleReport(null)} />
       )}
       {previewReport && (
         <ReportPreviewModal report={previewReport} onClose={() => setPreviewReport(null)} />

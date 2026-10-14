@@ -6,6 +6,7 @@ import { AREA_LIST } from '../../lib/constants';
 import { searchReports, checkIsAdmin } from '../../lib/reportsApi';
 import ReportModal from '../../components/ReportModal';
 import ResultsList from '../../components/ResultsList';
+import ReportsSummary from '../../components/ReportsSummary';
 
 function pad(n) { return String(n).padStart(2, '0'); }
 function todayStr() {
@@ -60,6 +61,25 @@ export default function ReportsPage() {
       return { from: `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}`, to: end };
     }
     return { from: dateFrom || end, to: dateTo || end };
+  }
+
+  const [summary, setSummary] = useState(null);   // { reports, kind, from, to }
+  const [summaryBusy, setSummaryBusy] = useState(false);
+  const canSummarize = type === 'faults' || type === 'meters';
+
+  // ملخص الفترة: كل تقارير النوع المختار (بنفس فلاتر البحث)
+  async function runSummary() {
+    if (!canSummarize) return;
+    setSummaryBusy(true);
+    try {
+      const { from, to } = dateRangeFor(period);
+      const data = await searchReports({ from, to, type, area, block, street, building, house, paci, meterNo });
+      const sorted = [...data].sort((a, b) => String(a.report_date).localeCompare(String(b.report_date)));
+      setSummary({ reports: sorted, kind: type, from, to });
+      setTimeout(() => document.getElementById('reports-summary')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    } catch (e) {
+      showToast('تعذر تجهيز الملخص: ' + e.message, true);
+    } finally { setSummaryBusy(false); }
   }
 
   const runSearch = useCallback(async (overridePeriod, overrideType) => {
@@ -129,7 +149,7 @@ export default function ReportsPage() {
 
         <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
           {[['all', 'الكل'], ['daily', 'يومي'], ['weekly', 'اسبوعي'], ['custom', 'مخصص']].map(([val, label]) => (
-            <button key={val} className={`chip ${period === val ? 'active' : ''}`} onClick={() => setPeriod(val)}>{label}</button>
+            <button key={val} className={`chip ${period === val ? 'active' : ''}`} onClick={() => { setPeriod(val); setSummary(null); }}>{label}</button>
           ))}
         </div>
 
@@ -144,7 +164,7 @@ export default function ReportsPage() {
           <label>نوع التقرير</label>
           <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
             {[['all', 'الكل'], ['faults', 'الأعطال'], ['meters', 'العدادات'], ['daily', 'التقارير اليومية']].map(([val, label]) => (
-              <button key={val} className={`chip ${type === val ? 'active' : ''}`} onClick={() => setType(val)}>{label}</button>
+              <button key={val} className={`chip ${type === val ? 'active' : ''}`} onClick={() => { setType(val); setSummary(null); }}>{label}</button>
             ))}
           </div>
         </div>
@@ -168,7 +188,28 @@ export default function ReportsPage() {
           )}
         </div>
 
-        <button className="btn-primary" onClick={() => runSearch()}>بحث</button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 16 }}>
+          <button className="btn-primary" style={{ marginTop: 0 }} onClick={() => runSearch()}>🔍 بحث</button>
+          <button
+            className="btn-primary"
+            style={{ marginTop: 0, background: canSummarize ? 'var(--gold)' : undefined, color: canSummarize ? '#fff' : undefined }}
+            disabled={!canSummarize || summaryBusy}
+            onClick={runSummary}
+          >
+            {summaryBusy ? 'جارٍ التجهيز...' : '📋 ملخص'}
+          </button>
+        </div>
+        {!canSummarize && (
+          <div style={{ fontSize: 11.5, color: 'var(--text-muted)', textAlign: 'center', marginTop: 6 }}>
+            اختر نوع التقرير (الأعطال أو العدادات) عشان يشتغل زر الملخص
+          </div>
+        )}
+
+        {summary && (
+          <div id="reports-summary">
+            <ReportsSummary {...summary} onClose={() => setSummary(null)} />
+          </div>
+        )}
 
         {results !== null && (
           <ResultsList results={results} activeType={type} isAdmin={isAdmin} onChanged={() => runSearch()} showToast={showToast} />
