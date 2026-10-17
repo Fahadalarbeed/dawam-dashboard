@@ -63,11 +63,7 @@ export function subscribeGenerators(onChange) {
   return () => { supabase.removeChannel(ch); };
 }
 
-export function generatorDays(g) {
-  const start = new Date(`${g.connected_on}T00:00:00`);
-  const end = g.removed_at ? new Date(g.removed_at) : new Date();
-  return Math.max(1, Math.ceil((end - start) / 86400000));
-}
+export { generatorDays } from './genDays';
 
 export function totalKva(size) {
   return String(size || '').split('+').reduce((s, x) => s + (parseFloat(x) || 0), 0);

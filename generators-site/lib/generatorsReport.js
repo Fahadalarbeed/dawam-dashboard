@@ -1,4 +1,4 @@
-import { generatorDays } from './generatorsApi';
+import { generatorDays } from './genDays';
 
 // طباعة جدول المولدات — بالعرض (A4 landscape)، جدول HT ثم LT مثل كشف المحافظة
 const DAYS_AR = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
