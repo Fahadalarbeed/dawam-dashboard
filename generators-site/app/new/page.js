@@ -27,6 +27,7 @@ const blankGen = () => ({ size: '', no: '', other: false });
 export default function NewGeneratorForm() {
   const [mode, setMode] = useState('install'); // install | remove
   const [status, setStatus] = useState('running'); // running | standby
+  const [genType, setGenType] = useState(''); // LT | HT
   const [done, setDone] = useState(null);
 
   return (
@@ -65,11 +66,16 @@ export default function NewGeneratorForm() {
                   <button className={`run${status === 'running' ? ' on' : ''}`} onClick={() => setStatus('running')}><b>شغال</b><small>Running</small></button>
                   <button className={`sb${status === 'standby' ? ' on' : ''}`} onClick={() => setStatus('standby')}><b>ستاند باي</b><small>Stand by</small></button>
                 </div>
+                <label className="nf-label" style={{ marginTop: 14 }}>نوع المولد *</label>
+                <div className="nf-big">
+                  <button className={`lt${genType === 'LT' ? ' on' : ''}`} onClick={() => setGenType('LT')}><b className="mono">LT</b></button>
+                  <button className={`ht${genType === 'HT' ? ' on' : ''}`} onClick={() => setGenType('HT')}><b className="mono">HT</b></button>
+                </div>
               </>
             )}
           </div>
           {mode === 'install'
-            ? <InstallForm status={status} onDone={() => setDone('install')} />
+            ? <InstallForm status={status} genType={genType} onDone={() => setDone('install')} />
             : <RemoveForm onDone={() => setDone('remove')} />}
         </>
       )}
@@ -78,7 +84,7 @@ export default function NewGeneratorForm() {
   );
 }
 
-function InstallForm({ status, onDone }) {
+function InstallForm({ status, genType, onDone }) {
   const [f, setF] = useState({
     shift: '', request_at: nowLocal(), installed_at: nowLocal(),
     gen_count: 1, status: 'running', gen_type: '', area: '', block: '', street: '', plot: '',
@@ -106,7 +112,7 @@ function InstallForm({ status, onDone }) {
   if (!f.request_at) missing.push('وقت طلب التركيب');
   if (!f.installed_at) missing.push('وقت التركيب');
   if (gens.some((g) => !g.size)) missing.push('حجم المولد');
-  if (!f.gen_type) missing.push('نوع المولد');
+  if (!genType) missing.push('نوع المولد');
   if (!f.area) missing.push('المنطقة');
   if (!f.install_reason || (f.install_reason === 'أخرى' && !other.trim())) missing.push('سبب التركيب');
 
@@ -127,7 +133,7 @@ function InstallForm({ status, onDone }) {
         size_kva: gens.map((g) => g.size).join('+'),
         gen_no: gens.some((g) => g.no.trim()) ? gens.map((g) => g.no.trim() || '-').join('+') : null,
         status,
-        gen_type: f.gen_type,
+        gen_type: genType,
         area: f.area,
         block: clean(f.block), street: clean(f.street), plot: clean(f.plot),
         station: clean(f.station), uds: clean(f.uds), spur: clean(f.spur), transformer: clean(f.transformer), unit_no: clean(f.unit_no),
@@ -175,14 +181,6 @@ function InstallForm({ status, onDone }) {
         ))}
         <div className="nf-grid" style={{ marginTop: 10 }}>
           <div className="full"><label>عدد الوايرات</label><input value={f.wires} onChange={set('wires')} placeholder="مثال: 11" /></div>
-        </div>
-      </div>
-
-      <div className="nf-card">
-        <label className="nf-label">نوع المولد *</label>
-        <div className="nf-big">
-          <button className={`lt${f.gen_type === 'LT' ? ' on' : ''}`} onClick={() => setF({ ...f, gen_type: 'LT' })}><b className="mono">LT</b></button>
-          <button className={`ht${f.gen_type === 'HT' ? ' on' : ''}`} onClick={() => setF({ ...f, gen_type: 'HT' })}><b className="mono">HT</b></button>
         </div>
       </div>
 
