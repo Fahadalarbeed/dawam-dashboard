@@ -26,6 +26,7 @@ const blankGen = () => ({ size: '', no: '', other: false });
 
 export default function NewGeneratorForm() {
   const [mode, setMode] = useState('install'); // install | remove
+  const [status, setStatus] = useState('running'); // running | standby
   const [done, setDone] = useState(null);
 
   return (
@@ -57,9 +58,18 @@ export default function NewGeneratorForm() {
               <button className={`inst${mode === 'install' ? ' on' : ''}`} onClick={() => setMode('install')}><b>تركيب</b><small>Install</small></button>
               <button className={`rem${mode === 'remove' ? ' on' : ''}`} onClick={() => setMode('remove')}><b>إزالة</b><small>Remove</small></button>
             </div>
+            {mode === 'install' && (
+              <>
+                <label className="nf-label" style={{ marginTop: 14 }}>حالة المولد *</label>
+                <div className="nf-big">
+                  <button className={`run${status === 'running' ? ' on' : ''}`} onClick={() => setStatus('running')}><b>شغال</b><small>Running</small></button>
+                  <button className={`sb${status === 'standby' ? ' on' : ''}`} onClick={() => setStatus('standby')}><b>ستاند باي</b><small>Stand by</small></button>
+                </div>
+              </>
+            )}
           </div>
           {mode === 'install'
-            ? <InstallForm onDone={() => setDone('install')} />
+            ? <InstallForm status={status} onDone={() => setDone('install')} />
             : <RemoveForm onDone={() => setDone('remove')} />}
         </>
       )}
@@ -68,7 +78,7 @@ export default function NewGeneratorForm() {
   );
 }
 
-function InstallForm({ onDone }) {
+function InstallForm({ status, onDone }) {
   const [f, setF] = useState({
     shift: '', request_at: nowLocal(), installed_at: nowLocal(),
     gen_count: 1, status: 'running', gen_type: '', area: '', block: '', street: '', plot: '',
@@ -116,7 +126,7 @@ function InstallForm({ onDone }) {
         gen_count: f.gen_count,
         size_kva: gens.map((g) => g.size).join('+'),
         gen_no: gens.some((g) => g.no.trim()) ? gens.map((g) => g.no.trim() || '-').join('+') : null,
-        status: f.status,
+        status,
         gen_type: f.gen_type,
         area: f.area,
         block: clean(f.block), street: clean(f.street), plot: clean(f.plot),
@@ -135,14 +145,6 @@ function InstallForm({ onDone }) {
 
   return (
     <>
-      <div className="nf-card">
-        <label className="nf-label">حالة المولد *</label>
-        <div className="nf-big">
-          <button className={`run${f.status === 'running' ? ' on' : ''}`} onClick={() => setF({ ...f, status: 'running' })}><b>شغال</b><small>Running</small></button>
-          <button className={`sb${f.status === 'standby' ? ' on' : ''}`} onClick={() => setF({ ...f, status: 'standby' })}><b>ستاند باي</b><small>Stand by</small></button>
-        </div>
-      </div>
-
       <div className="nf-card">
         <label className="nf-label">النوبة * <span className="nf-auto">— تلقائي حسب الجدول</span></label>
         <div className="nf-chips">{SHIFTS.map((s) => <button key={s} className={f.shift === s ? 'on' : ''} onClick={() => setF({ ...f, shift: s })}>{s}</button>)}</div>
