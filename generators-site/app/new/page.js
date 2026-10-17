@@ -136,6 +136,14 @@ function InstallForm({ onDone }) {
   return (
     <>
       <div className="nf-card">
+        <label className="nf-label">حالة المولد *</label>
+        <div className="nf-big">
+          <button className={`run${f.status === 'running' ? ' on' : ''}`} onClick={() => setF({ ...f, status: 'running' })}><b>شغال</b><small>Running</small></button>
+          <button className={`sb${f.status === 'standby' ? ' on' : ''}`} onClick={() => setF({ ...f, status: 'standby' })}><b>ستاند باي</b><small>Stand by</small></button>
+        </div>
+      </div>
+
+      <div className="nf-card">
         <label className="nf-label">النوبة * <span className="nf-auto">— تلقائي حسب الجدول</span></label>
         <div className="nf-chips">{SHIFTS.map((s) => <button key={s} className={f.shift === s ? 'on' : ''} onClick={() => setF({ ...f, shift: s })}>{s}</button>)}</div>
 
@@ -169,12 +177,7 @@ function InstallForm({ onDone }) {
       </div>
 
       <div className="nf-card">
-        <label className="nf-label">حالة المولد *</label>
-        <div className="nf-big">
-          <button className={`run${f.status === 'running' ? ' on' : ''}`} onClick={() => setF({ ...f, status: 'running' })}><b>شغال</b><small>Running</small></button>
-          <button className={`sb${f.status === 'standby' ? ' on' : ''}`} onClick={() => setF({ ...f, status: 'standby' })}><b>ستاند باي</b><small>Stand by</small></button>
-        </div>
-        <label className="nf-label" style={{ marginTop: 12 }}>نوع المولد *</label>
+        <label className="nf-label">نوع المولد *</label>
         <div className="nf-big">
           <button className={`lt${f.gen_type === 'LT' ? ' on' : ''}`} onClick={() => setF({ ...f, gen_type: 'LT' })}><b className="mono">LT</b></button>
           <button className={`ht${f.gen_type === 'HT' ? ' on' : ''}`} onClick={() => setF({ ...f, gen_type: 'HT' })}><b className="mono">HT</b></button>
