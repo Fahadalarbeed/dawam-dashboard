@@ -160,7 +160,7 @@ export default function GeneratorsPage() {
       </div>
 
       <div className="gen-bar">
-        <button className="gen-btn gold" onClick={() => setShowForm(true)}>➕ إدخال مولد جديد</button>
+        <a className="gen-btn gold" href="/new" style={{ textDecoration: 'none', textAlign: 'center' }}>➕ تركيب / إزالة مولد</a>
         <button className={`gen-btn ghost${showSearch ? ' on' : ''}`} onClick={() => setShowSearch((v) => !v)}>📅 بحث بالتاريخ</button>
         <button className="gen-btn ghost" disabled={!!printing} onClick={() => makePdf('print')}>{printing === 'print' ? '...' : '🖨️ طباعة'}</button>
         <button className="gen-btn ghost" disabled={!!printing} onClick={() => makePdf('share')}>{printing === 'share' ? '...' : '📤 مشاركة'}</button>
