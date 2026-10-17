@@ -312,6 +312,17 @@ function GeneratorForm({ onClose, onSaved }) {
     const next = sizes.length >= max ? [sz] : [...sizes, sz];
     setF({ ...f, size_kva: next.join('+') });
   }
+  // حجم غير موجود بالقائمة
+  const [otherOpen, setOtherOpen] = useState(false);
+  const [otherSize, setOtherSize] = useState('');
+  const customPicked = sizes.filter((x) => !GEN_SIZES.includes(x));
+  function addOtherSize() {
+    const v = otherSize.trim().replace(/[^0-9.]/g, '');
+    if (!v) return;
+    pickSize(v);
+    setOtherSize('');
+    setOtherOpen(false);
+  }
 
   // النوبة والتاريخ تلقائي: النوبة المناوبة الحين + تاريخ اليوم
   const autoShift = getCurrentShiftLetter();
@@ -424,7 +435,16 @@ function GeneratorForm({ onClose, onSaved }) {
                     </button>
                   );
                 })}
+                <button type="button" className={customPicked.length || otherOpen ? 'on' : ''} onClick={() => setOtherOpen((v) => !v)}>
+                  {customPicked.length ? `أخرى: ${customPicked.join('+')}` : 'أخرى'}
+                </button>
               </div>
+              {otherOpen && (
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <input type="text" inputMode="numeric" value={otherSize} onChange={(e) => setOtherSize(e.target.value)} placeholder="اكتب الحجم kVA" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addOtherSize(); } }} autoFocus />
+                  <button type="button" className="gen-btn gold" style={{ flex: '0 0 auto', padding: '0 18px' }} disabled={!otherSize.trim()} onClick={addOtherSize}>إضافة</button>
+                </div>
+              )}
               {Number(f.gen_count) > 1 && sizes.length > 0 && (
                 <div className="gen-hint">المختار: <b className="mono">{f.size_kva}</b> <button type="button" className="gen-link" onClick={() => setF({ ...f, size_kva: '' })}>مسح</button></div>
               )}
