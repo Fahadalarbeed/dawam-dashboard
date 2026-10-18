@@ -265,7 +265,7 @@ export default function GeneratorsPage() {
                   <td className="gen-notes"><b>{g.install_reason}</b></td>
                   <td className="gen-notes">{g.notes}</td>
                   {results && (
-                    <td className="mono">
+                    <td>
                       {removed ? (
                         <span className="gen-removed">
                           {fmtDate(g.removed_at)} {new Date(g.removed_at).toTimeString().slice(0, 5)}
@@ -276,7 +276,7 @@ export default function GeneratorsPage() {
                     </td>
                   )}
                   <td>
-                    {removed ? (
+                    {removed && results ? '—' : removed ? (
                       <span className="gen-removed">
                         مُزال {fmtDate(g.removed_at)} <span className="mono">{new Date(g.removed_at).toTimeString().slice(0, 5)}</span>
                         <br />👤 {g.removed_by || g.removed_by_email || '—'}
@@ -618,10 +618,14 @@ const CSS = `
   .gen-btn { font-size: 15px; padding: 13px 18px; }
   .gen-tabs button { font-size: 14.5px; padding: 10px 14px; }
   .gen-tw { overflow-x: visible; }
-  .gen-table { min-width: 0; font-size: 14px; }
-  .gen-table th { font-size: 13.5px; padding: 9px 5px; white-space: normal; }
-  .gen-table td { padding: 9px 5px; white-space: normal; }
+  .gen-table { min-width: 0; font-size: 13.5px; }
+  .gen-table th { font-size: 13px; padding: 8px 3px; white-space: normal; }
+  .gen-table td { padding: 8px 3px; white-space: normal; }
   .gen-table td.mono { white-space: nowrap; }
+  .gen-notes { min-width: 0; }
   .gen-scroll-hint { display: none; }
+  .gen-table td > div { flex-wrap: wrap; justify-content: center; }
+  .gen-rm, .gen-sw, .gen-who { white-space: normal; }
+  .gen-table td .gen-removed { white-space: normal; }
 }
 `;
