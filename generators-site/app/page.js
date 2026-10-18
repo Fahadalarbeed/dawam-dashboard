@@ -228,6 +228,7 @@ export default function GeneratorsPage() {
               <th className="grp" rowSpan={2}>النوع</th>
               <th className="grp" rowSpan={2}>النوبة</th>
               <th className="grp" rowSpan={2}>تاريخ التركيب</th>
+              <th className="grp" rowSpan={2}>اسم اللي ركّب</th>
               <th className="grp" rowSpan={2}>الأيام</th>
               <th className="grp" rowSpan={2}>سبب التركيب</th>
               <th className="grp" rowSpan={2}>ملاحظات</th>
@@ -241,9 +242,9 @@ export default function GeneratorsPage() {
             </tr>
           </thead>
           <tbody>
-            {active === null && <tr><td colSpan={results ? 23 : 22} className="gen-empty">جارٍ التحميل...</td></tr>}
+            {active === null && <tr><td colSpan={results ? 24 : 23} className="gen-empty">جارٍ التحميل...</td></tr>}
             {active !== null && rows.length === 0 && (
-              <tr><td colSpan={results ? 23 : 22} className="gen-empty">{results ? 'لا توجد نتائج' : 'لا توجد مولدات — اضغط "إدخال مولد جديد"'}</td></tr>
+              <tr><td colSpan={results ? 24 : 23} className="gen-empty">{results ? 'لا توجد نتائج' : 'لا توجد مولدات — اضغط "إدخال مولد جديد"'}</td></tr>
             )}
             {rows.map((g, i) => {
               const removed = !!g.removed_at;
@@ -260,7 +261,8 @@ export default function GeneratorsPage() {
                   <td><span className={`gen-tag ${sb ? 'st2' : 'st1'}`}>{STATUS[g.status]}</span></td>
                   <td><span className={`gen-tag ${g.gen_type === 'LT' ? 'lt' : 'ht'}`}>{g.gen_type}</span></td>
                   <td><b>{g.shift}</b></td>
-                  <td className="mono">{fmtDate(g.connected_on)}{g.installed_at && <><br /><small style={{ color: 'var(--text-muted)' }}>{new Date(g.installed_at).toTimeString().slice(0, 5)}</small></>}{g.entered_by && <><br /><span className="gen-who">👤 {g.entered_by}</span></>}</td>
+                  <td className="mono">{fmtDate(g.connected_on)}{g.installed_at && <><br /><small style={{ color: 'var(--text-muted)' }}>{new Date(g.installed_at).toTimeString().slice(0, 5)}</small></>}</td>
+                  <td><span className="gen-who">{g.entered_by || '—'}</span></td>
                   <td className="mono"><b>{generatorDays(g)}</b></td>
                   <td className="gen-notes"><b>{g.install_reason}</b></td>
                   <td className="gen-notes">{g.notes}</td>
@@ -295,7 +297,7 @@ export default function GeneratorsPage() {
               <tr className="tot">
                 <td colSpan={10} style={{ textAlign: 'left' }}>المجموع / Total</td>
                 <td className="mono">{rowsCount}</td>
-                <td colSpan={results ? 12 : 11}></td>
+                <td colSpan={results ? 13 : 12}></td>
               </tr>
             )}
           </tbody>
