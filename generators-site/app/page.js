@@ -8,6 +8,7 @@ import { getCurrentShiftLetter } from '../lib/shift';
 import { AREA_LIST } from '../lib/constants';
 import { htmlToPdfBlob, downloadBlob, sharePdf } from '../lib/pdf';
 import { buildGeneratorsDoc } from '../lib/generatorsReport';
+import NewGeneratorForm from '../components/NewGeneratorForm';
 
 // مولدات محافظة الفروانية — صفحة عامة بدون تسجيل دخول (قاعدة بيانات منفصلة)
 const GEN_SIZES = ['1800', '1250', '1150', '1000', '950', '850', '750', '625', '500', '450', '320', '180', '150'];
@@ -38,6 +39,7 @@ export default function GeneratorsPage() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all'); // all | running | standby | LT | HT
   const [showForm, setShowForm] = useState(false);
+  const [showEntry, setShowEntry] = useState(false); // نافذة تركيب / إزالة
   const [showSearch, setShowSearch] = useState(false);
   const [search, setSearch] = useState({ by: 'connected', from: '', to: '' });
   const [results, setResults] = useState(null);
@@ -57,6 +59,16 @@ export default function GeneratorsPage() {
     const t = setInterval(load, 60000);
     return () => { off(); clearInterval(t); };
   }, [load]);
+
+  // نافذة التركيب/الإزالة: نوقف تمرير الصفحة اللي وراها ونسكرها بزر Esc
+  useEffect(() => {
+    if (!showEntry) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e) => { if (e.key === 'Escape') setShowEntry(false); };
+    window.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = prev; window.removeEventListener('keydown', onKey); };
+  }, [showEntry]);
 
   // البحث بالتاريخ
   useEffect(() => {
@@ -165,7 +177,7 @@ export default function GeneratorsPage() {
       </div>
 
       <div className="gen-bar">
-        <a className="gen-btn gold" href="/new" style={{ textDecoration: 'none', textAlign: 'center' }}>➕ تركيب / إزالة مولد</a>
+        <button className="gen-btn gold" onClick={() => setShowEntry(true)}>➕ تركيب / إزالة مولد</button>
         <button className={`gen-btn ghost${showSearch ? ' on' : ''}`} onClick={() => setShowSearch((v) => !v)}>📅 بحث بالتاريخ</button>
         <button className="gen-btn ghost" disabled={!!printing} onClick={() => makePdf('print')}>{printing === 'print' ? '...' : '🖨️ طباعة'}</button>
         <button className="gen-btn ghost" disabled={!!printing} onClick={() => makePdf('share')}>{printing === 'share' ? '...' : '📤 مشاركة'}</button>
@@ -290,6 +302,13 @@ export default function GeneratorsPage() {
       </div>
       <div className="gen-hint gen-scroll-hint" style={{ textAlign: 'center' }}>الجدول يتمرر يمين ويسار · Scroll sideways</div>
 
+      {showEntry && (
+        <div className="gen-entry" onClick={(e) => { if (e.target === e.currentTarget) setShowEntry(false); }}>
+          <div className="gen-entry-box">
+            <NewGeneratorForm embedded onClose={() => setShowEntry(false)} onSaved={load} />
+          </div>
+        </div>
+      )}
       {removing && <RemoveDialog g={removing} busy={busyId === removing.id} onCancel={() => setRemoving(null)} onConfirm={confirmRemove} />}
       {showForm && <GeneratorForm onClose={() => setShowForm(false)} onSaved={async () => { setShowForm(false); await load(); }} />}
     </div>
@@ -586,6 +605,9 @@ const CSS = `
 
 .gen-type-seg { margin-top: 8px; }
 .gen-tag.rmp { background: #FDECEA; color: #B3261E; }
+.gen-entry { position: fixed; inset: 0; z-index: 60; background: rgba(15,22,40,.45); overflow-y: auto; padding: 24px 12px; -webkit-overflow-scrolling: touch; }
+.gen-entry-box { max-width: 660px; margin: 0 auto; background: var(--bg); border-radius: 22px; padding: 16px 14px 6px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+@media (max-width: 640px) { .gen-entry { padding: 0; } .gen-entry-box { border-radius: 0; min-height: 100%; } }
 /* الكمبيوتر: الصفحة بعرض الشاشة والجدول كامل بدون تمرير */
 @media (min-width: 1100px) {
   .gen-wrap { max-width: 1880px; padding-left: 28px; padding-right: 28px; }
