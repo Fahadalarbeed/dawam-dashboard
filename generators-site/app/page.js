@@ -260,7 +260,7 @@ export default function GeneratorsPage() {
                   <td><span className={`gen-tag ${sb ? 'st2' : 'st1'}`}>{STATUS[g.status]}</span></td>
                   <td><span className={`gen-tag ${g.gen_type === 'LT' ? 'lt' : 'ht'}`}>{g.gen_type}</span></td>
                   <td><b>{g.shift}</b></td>
-                  <td className="mono">{fmtDate(g.connected_on)}{g.installed_at && <><br /><small style={{ color: 'var(--text-muted)' }}>{new Date(g.installed_at).toTimeString().slice(0, 5)}</small></>}</td>
+                  <td className="mono">{fmtDate(g.connected_on)}{g.installed_at && <><br /><small style={{ color: 'var(--text-muted)' }}>{new Date(g.installed_at).toTimeString().slice(0, 5)}</small></>}{g.entered_by && <><br /><span className="gen-who">👤 {g.entered_by}</span></>}</td>
                   <td className="mono"><b>{generatorDays(g)}</b></td>
                   <td className="gen-notes"><b>{g.install_reason}</b></td>
                   <td className="gen-notes">{g.notes}</td>
@@ -269,6 +269,7 @@ export default function GeneratorsPage() {
                       {removed ? (
                         <span className="gen-removed">
                           {fmtDate(g.removed_at)} {new Date(g.removed_at).toTimeString().slice(0, 5)}
+                          <br /><span className="gen-who">👤 {g.removed_by || '—'}</span>
                           {inPeriod(g.removed_at) && <><br /><span className="gen-tag rmp">خلال الفترة</span></>}
                         </span>
                       ) : <span className="gen-tag st1">ما زال مركّب</span>}
@@ -608,6 +609,7 @@ const CSS = `
 .gen-entry { position: fixed; inset: 0; z-index: 60; background: rgba(15,22,40,.45); overflow-y: auto; padding: 24px 12px; -webkit-overflow-scrolling: touch; }
 .gen-entry-box { max-width: 660px; margin: 0 auto; background: var(--bg); border-radius: 22px; padding: 16px 14px 6px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
 @media (max-width: 640px) { .gen-entry { padding: 0; } .gen-entry-box { border-radius: 0; min-height: 100%; } }
+.gen-who { font-family: 'Cairo', sans-serif; font-size: 11.5px; font-weight: 700; color: var(--navy); white-space: nowrap; }
 /* الكمبيوتر: الصفحة بعرض الشاشة والجدول كامل بدون تمرير */
 @media (min-width: 1100px) {
   .gen-wrap { max-width: 1880px; padding-left: 28px; padding-right: 28px; }

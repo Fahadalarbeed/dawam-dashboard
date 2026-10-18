@@ -121,6 +121,7 @@ function InstallForm({ status, genType, onDone }) {
   if (!genType) missing.push('نوع المولد');
   if (!f.area) missing.push('المنطقة');
   if (!f.install_reason || (f.install_reason === 'أخرى' && !other.trim())) missing.push('سبب التركيب');
+  if (!f.entered_by.trim()) missing.push('اسم اللي ركّب المولد');
 
   async function submit() {
     if (missing.length) { setErr('عبّي: ' + missing.join('، ')); return; }
@@ -221,7 +222,7 @@ function InstallForm({ status, genType, onDone }) {
         {f.install_reason === 'أخرى' && <input style={{ marginTop: 8 }} value={other} onChange={(e) => setOther(e.target.value)} placeholder="اكتب السبب" />}
         <div className="nf-grid" style={{ marginTop: 12 }}>
           <div className="full"><label>الملاحظات</label><textarea rows={3} value={f.notes} onChange={set('notes')} /></div>
-          <div className="full"><label>اسم المُدخل</label><input value={f.entered_by} onChange={set('entered_by')} placeholder="اسمك" /></div>
+          <div className="full"><label>اسم اللي ركّب المولد *</label><input value={f.entered_by} onChange={set('entered_by')} placeholder="الاسم" /></div>
         </div>
       </div>
 

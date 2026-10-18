@@ -54,7 +54,7 @@ function tableFor(rows, typeLabel, showRemoved) {
     return `<tr class="${rm ? 'rm' : sb ? 'sb' : ''}"><td>${i + 1}</td><td>${esc(g.area)}</td><td>${esc(g.block)}</td><td>${esc(g.street)}</td><td>${esc(g.plot)}</td>`
       + `<td class="mono">${esc(g.station)}</td><td class="mono">${esc(g.uds)}</td><td class="mono">${esc(g.spur)}</td><td class="mono">${esc(g.transformer)}</td><td class="mono">${esc(g.unit_no)}</td>`
       + `<td class="mono">${esc(g.gen_count)}</td><td class="mono"><b>${esc(g.size_kva)}</b></td><td class="mono">${esc(g.gen_no)}</td><td class="mono">${esc(g.wires)}</td>`
-      + `<td>${sb ? 'ستاند باي' : 'شغال'}</td><td><b>${esc(g.shift)}</b></td><td class="mono">${fdate(g.connected_on)}${g.installed_at ? `<br/><span style="font-size:14px;color:#555">${fdatetime(g.installed_at).slice(-5)}</span>` : ''}</td><td class="mono"><b>${generatorDays(g)}</b></td>`
+      + `<td>${sb ? 'ستاند باي' : 'شغال'}</td><td><b>${esc(g.shift)}</b></td><td class="mono">${fdate(g.connected_on)}${g.installed_at ? `<br/><span style="font-size:14px;color:#555">${fdatetime(g.installed_at).slice(-5)}</span>` : ''}${g.entered_by ? `<br/><span style="font-size:14px;font-family:Cairo,sans-serif;font-weight:700">${esc(g.entered_by)}</span>` : ''}</td><td class="mono"><b>${generatorDays(g)}</b></td>`
       + `<td class="n"><b>${esc(g.install_reason)}</b></td><td class="n">${esc(g.notes)}</td>${showRemoved ? `<td>${rm ? `<span class="mono">${fdatetime(g.removed_at)}</span><br/>${esc(g.removed_by || g.removed_by_email)}` : ''}</td>` : ''}</tr>`;
   }).join('');
   const total = rows.reduce((s, g) => s + (g.gen_count || 1), 0);
