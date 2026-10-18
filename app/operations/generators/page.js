@@ -277,7 +277,7 @@ export default function GeneratorsPage() {
           </tbody>
         </table>
       </div>
-      <div className="gen-hint" style={{ textAlign: 'center' }}>الجدول يتمرر يمين ويسار · Scroll sideways</div>
+      <div className="gen-hint gen-scroll-hint" style={{ textAlign: 'center' }}>الجدول يتمرر يمين ويسار · Scroll sideways</div>
 
       {removing && <RemoveDialog g={removing} busy={busyId === removing.id} onCancel={() => setRemoving(null)} onConfirm={confirmRemove} />}
       {showForm && <GeneratorForm onClose={() => setShowForm(false)} onSaved={async () => { setShowForm(false); await load(); }} />}
@@ -572,4 +572,19 @@ const CSS = `
 .gen-chips button.on { background: var(--navy); border-color: var(--navy); color: #fff; }
 .gen-save { width: 100%; margin-top: 14px; border: none; border-radius: 14px; padding: 14px; background: var(--gold); color: #fff; font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 800; cursor: pointer; }
 .gen-save:disabled { opacity: .5; cursor: default; }
+
+/* الكمبيوتر: الصفحة بعرض الشاشة والجدول كامل بدون تمرير */
+@media (min-width: 1100px) {
+  .gen-wrap { max-width: 1880px; padding-left: 28px; padding-right: 28px; }
+  .gen-n { font-size: 32px; }
+  .gen-l { font-size: 14.5px; }
+  .gen-btn { font-size: 15px; padding: 13px 18px; }
+  .gen-tabs button { font-size: 14.5px; padding: 10px 14px; }
+  .gen-tw { overflow-x: visible; }
+  .gen-table { min-width: 0; font-size: 14px; }
+  .gen-table th { font-size: 13.5px; padding: 9px 5px; white-space: normal; }
+  .gen-table td { padding: 9px 5px; white-space: normal; }
+  .gen-table td.mono { white-space: nowrap; }
+  .gen-scroll-hint { display: none; }
+}
 `;
