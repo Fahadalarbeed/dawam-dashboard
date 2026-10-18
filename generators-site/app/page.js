@@ -9,6 +9,7 @@ import { AREA_LIST } from '../lib/constants';
 import { htmlToPdfBlob, downloadBlob, sharePdf } from '../lib/pdf';
 import { buildGeneratorsDoc } from '../lib/generatorsReport';
 import NewGeneratorForm from '../components/NewGeneratorForm';
+import { mapsUrl } from '../components/LocationPicker';
 
 // مولدات محافظة الفروانية — صفحة عامة بدون تسجيل دخول (قاعدة بيانات منفصلة)
 const GEN_SIZES = ['1800', '1250', '1150', '1000', '950', '850', '750', '625', '500', '450', '320', '180', '150'];
@@ -228,7 +229,7 @@ export default function GeneratorsPage() {
           <thead>
             <tr>
               <th className="grp" rowSpan={2}>م</th>
-              <th className="grp" colSpan={4}>العنوان</th>
+              <th className="grp" colSpan={5}>العنوان</th>
               <th className="grp" colSpan={5}>مصدر التغذية</th>
               <th className="grp" colSpan={5}>بيانات المولد</th>
               <th className="grp" rowSpan={2}>النوع</th>
@@ -241,15 +242,15 @@ export default function GeneratorsPage() {
               <th className="grp" rowSpan={2}>إجراء</th>
             </tr>
             <tr>
-              <th>المنطقة</th><th>القطعة</th><th>الشارع</th><th>القسيمة</th>
+              <th>المنطقة</th><th>القطعة</th><th>الشارع</th><th>القسيمة</th><th>اللوكيشن</th>
               <th>محطة</th><th>UDS</th><th>Spur</th><th>محول</th><th>اليونت</th>
               <th>العدد</th><th>الحجم kVA</th><th>رقم المولد</th><th>الوايرات</th><th>الحالة</th>
             </tr>
           </thead>
           <tbody>
-            {active === null && <tr><td colSpan={results ? 23 : 22} className="gen-empty">جارٍ التحميل...</td></tr>}
+            {active === null && <tr><td colSpan={results ? 24 : 23} className="gen-empty">جارٍ التحميل...</td></tr>}
             {active !== null && rows.length === 0 && (
-              <tr><td colSpan={results ? 23 : 22} className="gen-empty">{results ? 'لا توجد نتائج' : 'لا توجد مولدات — اضغط "إدخال مولد جديد"'}</td></tr>
+              <tr><td colSpan={results ? 24 : 23} className="gen-empty">{results ? 'لا توجد نتائج' : 'لا توجد مولدات — اضغط "إدخال مولد جديد"'}</td></tr>
             )}
             {rows.map((g, i) => {
               const removed = !!g.removed_at;
@@ -258,6 +259,7 @@ export default function GeneratorsPage() {
                 <tr key={g.id} className={removed ? 'rm' : sb ? 'sb' : ''}>
                   <td>{i + 1}</td>
                   <td>{g.area}</td><td>{g.block}</td><td>{g.street}</td><td>{g.plot}</td>
+                  <td>{g.lat != null && g.lng != null ? <a className="gen-loc" href={mapsUrl(g.lat, g.lng)} target="_blank" rel="noreferrer">📍 خريطة</a> : '—'}</td>
                   <td className="mono">{g.station}</td><td className="mono">{g.uds}</td><td className="mono">{g.spur}</td>
                   <td className="mono">{g.transformer}</td><td className="mono">{g.unit_no}</td>
                   <td className="mono">{g.gen_count}</td>
@@ -299,7 +301,7 @@ export default function GeneratorsPage() {
             })}
             {rows.length > 0 && (
               <tr className="tot">
-                <td colSpan={10} style={{ textAlign: 'left' }}>المجموع / Total</td>
+                <td colSpan={11} style={{ textAlign: 'left' }}>المجموع / Total</td>
                 <td className="mono">{rowsCount}</td>
                 <td colSpan={results ? 12 : 11}></td>
               </tr>
@@ -616,6 +618,7 @@ const CSS = `
 .gen-entry-box { max-width: 660px; margin: 0 auto; background: var(--bg); border-radius: 22px; padding: 16px 14px 6px; box-shadow: 0 20px 60px rgba(0,0,0,.25); }
 @media (max-width: 640px) { .gen-entry { padding: 0; } .gen-entry-box { border-radius: 0; min-height: 100%; } }
 .gen-who { font-family: 'Cairo', sans-serif; font-size: 11.5px; font-weight: 700; color: var(--navy); white-space: nowrap; }
+.gen-loc { display: inline-block; white-space: nowrap; background: #FDECEA; color: #B3261E; border-radius: 999px; padding: 3px 9px; font-size: 11.5px; font-weight: 700; text-decoration: none; }
 /* الكمبيوتر: الصفحة بعرض الشاشة والجدول كامل بدون تمرير */
 @media (min-width: 1100px) {
   .gen-wrap { max-width: 1880px; padding-left: 28px; padding-right: 28px; }

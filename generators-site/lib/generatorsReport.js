@@ -42,23 +42,23 @@ const STYLES = `
 
 function tableFor(rows, typeLabel, showRemoved) {
   const head = `<thead>
-    <tr><th class="grp" rowspan="2">م</th><th class="grp" colspan="4">العنوان</th><th class="grp" colspan="5">مصدر التغذية</th><th class="grp" colspan="5">بيانات المولد</th>
+    <tr><th class="grp" rowspan="2">م</th><th class="grp" colspan="5">العنوان</th><th class="grp" colspan="5">مصدر التغذية</th><th class="grp" colspan="5">بيانات المولد</th>
     <th class="grp" rowspan="2">النوبة</th><th class="grp" rowspan="2">تاريخ التركيب</th><th class="grp" rowspan="2">الأيام</th><th class="grp" rowspan="2">سبب التركيب</th><th class="grp" rowspan="2">ملاحظات</th>${showRemoved ? '<th class="grp" rowspan="2">الإزالة</th>' : ''}</tr>
-    <tr><th>المنطقة</th><th>القطعة</th><th>الشارع</th><th>القسيمة</th><th>محطة</th><th>UDS</th><th>Spur</th><th>محول</th><th>اليونت</th>
+    <tr><th>المنطقة</th><th>القطعة</th><th>الشارع</th><th>القسيمة</th><th>اللوكيشن</th><th>محطة</th><th>UDS</th><th>Spur</th><th>محول</th><th>اليونت</th>
     <th>العدد</th><th>الحجم kVA</th><th>رقم المولد</th><th>الوايرات</th><th>الحالة</th></tr></thead>`;
-  const cols = showRemoved ? 21 : 20;
+  const cols = showRemoved ? 22 : 21;
   if (!rows.length) return `<table>${head}<tbody><tr><td colspan="${cols}" class="none">لا توجد مولدات ${typeLabel}</td></tr></tbody></table>`;
   const body = rows.map((g, i) => {
     const sb = g.status === 'standby';
     const rm = !!g.removed_at;
-    return `<tr class="${rm ? 'rm' : sb ? 'sb' : ''}"><td>${i + 1}</td><td>${esc(g.area)}</td><td>${esc(g.block)}</td><td>${esc(g.street)}</td><td>${esc(g.plot)}</td>`
+    return `<tr class="${rm ? 'rm' : sb ? 'sb' : ''}"><td>${i + 1}</td><td>${esc(g.area)}</td><td>${esc(g.block)}</td><td>${esc(g.street)}</td><td>${esc(g.plot)}</td><td>${g.lat != null && g.lng != null ? `<a href="https://www.google.com/maps?q=${g.lat},${g.lng}" style="color:#B3261E;font-weight:700;text-decoration:none">📍 خريطة</a>` : ''}</td>`
       + `<td class="mono">${esc(g.station)}</td><td class="mono">${esc(g.uds)}</td><td class="mono">${esc(g.spur)}</td><td class="mono">${esc(g.transformer)}</td><td class="mono">${esc(g.unit_no)}</td>`
       + `<td class="mono">${esc(g.gen_count)}</td><td class="mono"><b>${esc(g.size_kva)}</b></td><td class="mono">${esc(g.gen_no)}</td><td class="mono">${esc(g.wires)}</td>`
       + `<td>${sb ? 'ستاند باي' : 'شغال'}</td><td><b>${esc(g.shift)}</b></td><td class="mono">${fdate(g.connected_on)}${g.installed_at ? `<br/><span style="font-size:14px;color:#555">${fdatetime(g.installed_at).slice(-5)}</span>` : ''}${g.entered_by ? `<br/><span style="font-size:14px;font-family:Cairo,sans-serif;font-weight:700">${esc(g.entered_by)}</span>` : ''}</td><td class="mono"><b>${generatorDays(g)}</b></td>`
       + `<td class="n"><b>${esc(g.install_reason)}</b></td><td class="n">${esc(g.notes)}</td>${showRemoved ? `<td>${rm ? `<span class="mono">${fdatetime(g.removed_at)}</span><br/>${esc(g.removed_by || g.removed_by_email)}` : ''}</td>` : ''}</tr>`;
   }).join('');
   const total = rows.reduce((s, g) => s + (g.gen_count || 1), 0);
-  return `<table>${head}<tbody>${body}<tr class="tot"><td colspan="10" style="text-align:left">المجموع</td><td class="mono">${total}</td><td colspan="${cols - 11}"></td></tr></tbody></table>`;
+  return `<table>${head}<tbody>${body}<tr class="tot"><td colspan="11" style="text-align:left">المجموع</td><td class="mono">${total}</td><td colspan="${cols - 12}"></td></tr></tbody></table>`;
 }
 
 // rows: الصفوف الظاهرة بالجدول (بعد الفلتر/البحث) — title: وصف الفلتر إن وجد

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { listActiveGenerators, addGenerator, removeGenerator, generatorDays, GEN_SIZES, INSTALL_REASONS } from '../lib/generatorsApi';
 import { getCurrentShiftLetter } from '../lib/shift';
 import { AREA_LIST } from '../lib/constants';
+import LocationPicker from './LocationPicker';
 
 // نموذج تركيب / إزالة مولد — نفس فكرة نموذج Jotform بتصميمنا وبيانات الفروانية
 // كل تسجيل يظهر على طول بجدول المولدات بالصفحة الرئيسية
@@ -98,6 +99,7 @@ function InstallForm({ status, genType, onDone }) {
   });
   const [gens, setGens] = useState([blankGen()]);
   const [other, setOther] = useState('');
+  const [loc, setLoc] = useState(null); // موقع المولد على الخريطة
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
@@ -148,6 +150,8 @@ function InstallForm({ status, genType, onDone }) {
         install_reason: f.install_reason === 'أخرى' ? `أخرى - ${other.trim()}` : f.install_reason,
         notes: clean(f.notes),
         entered_by: clean(f.entered_by),
+        lat: loc ? Number(loc.lat.toFixed(7)) : null,
+        lng: loc ? Number(loc.lng.toFixed(7)) : null,
       };
       await addGenerator(row);
       try { if (f.entered_by.trim()) localStorage.setItem('gen_form_name', f.entered_by.trim()); } catch { /* ignore */ }
@@ -204,6 +208,7 @@ function InstallForm({ status, genType, onDone }) {
           <div><label>القطعة</label><input value={f.block} onChange={set('block')} /></div>
           <div><label>الشارع</label><input value={f.street} onChange={set('street')} /></div>
           <div className="full"><label>رقم القسيمة</label><input value={f.plot} onChange={set('plot')} /></div>
+          <div className="full"><label>اللوكيشن (مكان المولد)</label><LocationPicker value={loc} onChange={setLoc} /></div>
         </div>
       </div>
 
