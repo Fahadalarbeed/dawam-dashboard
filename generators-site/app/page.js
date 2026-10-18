@@ -134,6 +134,12 @@ export default function GeneratorsPage() {
     finally { setPrinting(''); }
   }
   async function handleToggle(g) {
+    const toRunning = g.status !== 'running';
+    const where = [g.area, g.block && `ق ${g.block}`, g.street && `ش ${g.street}`].filter(Boolean).join(' — ');
+    const msg = toRunning
+      ? `متأكد تبي تحوّل المولد من ستاند باي إلى شغال؟\n\n${where}\nالحجم: ${g.size_kva || '—'} kVA`
+      : `متأكد تبي تحوّل المولد من شغال إلى ستاند باي؟\n\n${where}\nالحجم: ${g.size_kva || '—'} kVA`;
+    if (!window.confirm(msg)) return;
     setBusyId(g.id);
     try { await setGeneratorStatus(g.id, g.status === 'running' ? 'standby' : 'running'); await load(); }
     catch (e) { alert('تعذر التعديل: ' + e.message); }
