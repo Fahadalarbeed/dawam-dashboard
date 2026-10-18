@@ -85,6 +85,11 @@ export default function GeneratorsPage() {
     return list;
   }, [results, active, filter]);
   const rowsCount = rows.reduce((s, g) => s + (g.gen_count || 1), 0);
+  function inPeriod(ts) {
+    if (!ts) return false;
+    const d = new Date(new Date(ts).getTime() + 3 * 3600000).toISOString().slice(0, 10);
+    return (!search.from || d >= search.from) && (!search.to || d <= search.to);
+  }
 
   async function confirmRemove(name) {
     const g = removing;
@@ -172,12 +177,21 @@ export default function GeneratorsPage() {
             <button className={search.by === 'connected' ? 'on' : ''} onClick={() => setSearch({ ...search, by: 'connected' })}>حسب تاريخ الإيصال</button>
             <button className={search.by === 'removed' ? 'on' : ''} onClick={() => setSearch({ ...search, by: 'removed' })}>حسب تاريخ الإزالة</button>
           </div>
+          <div className="gen-seg gen-type-seg">
+            {[['all', 'الكل'], ['HT', 'HT'], ['LT', 'LT'], ['standby', 'ستاند باي']].map(([k, label]) => (
+              <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{label}</button>
+            ))}
+          </div>
           <div className="gen-dr">
             <div><label>من / From</label><input type="date" value={search.from} onChange={(e) => setSearch({ ...search, from: e.target.value })} /></div>
             <div><label>إلى / To</label><input type="date" value={search.to} onChange={(e) => setSearch({ ...search, to: e.target.value })} /></div>
           </div>
           <div className="gen-hint">
-            {results ? `نتائج البحث: ${results.length} — تشمل المولدات المُزالة` : 'اختر تاريخ — البحث يشمل المولدات المُزالة'}
+            {results
+              ? `نتائج البحث: ${rowsCount} مولد — منها ${rows.filter((g) => g.removed_at).reduce((s, g) => s + (g.gen_count || 1), 0)} مُزال`
+              : search.by === 'removed'
+                ? 'اختر الفترة — يطلع لك المولدات اللي انشالت خلالها'
+                : 'اختر الفترة — يطلع لك كل المولدات اللي انركبت خلالها حتى لو انشالت بعدين، مع تاريخ الإزالة'}
             {(search.from || search.to) && <button className="gen-link" onClick={() => setSearch({ ...search, from: '', to: '' })}>مسح</button>}
           </div>
         </div>
@@ -205,6 +219,7 @@ export default function GeneratorsPage() {
               <th className="grp" rowSpan={2}>الأيام</th>
               <th className="grp" rowSpan={2}>سبب التركيب</th>
               <th className="grp" rowSpan={2}>ملاحظات</th>
+              {results && <th className="grp" rowSpan={2}>تاريخ الإزالة</th>}
               <th className="grp" rowSpan={2}>إجراء</th>
             </tr>
             <tr>
@@ -214,9 +229,9 @@ export default function GeneratorsPage() {
             </tr>
           </thead>
           <tbody>
-            {active === null && <tr><td colSpan={22} className="gen-empty">جارٍ التحميل...</td></tr>}
+            {active === null && <tr><td colSpan={results ? 23 : 22} className="gen-empty">جارٍ التحميل...</td></tr>}
             {active !== null && rows.length === 0 && (
-              <tr><td colSpan={22} className="gen-empty">{results ? 'لا توجد نتائج' : 'لا توجد مولدات — اضغط "إدخال مولد جديد"'}</td></tr>
+              <tr><td colSpan={results ? 23 : 22} className="gen-empty">{results ? 'لا توجد نتائج' : 'لا توجد مولدات — اضغط "إدخال مولد جديد"'}</td></tr>
             )}
             {rows.map((g, i) => {
               const removed = !!g.removed_at;
@@ -237,6 +252,16 @@ export default function GeneratorsPage() {
                   <td className="mono"><b>{generatorDays(g)}</b></td>
                   <td className="gen-notes"><b>{g.install_reason}</b></td>
                   <td className="gen-notes">{g.notes}</td>
+                  {results && (
+                    <td className="mono">
+                      {removed ? (
+                        <span className="gen-removed">
+                          {fmtDate(g.removed_at)} {new Date(g.removed_at).toTimeString().slice(0, 5)}
+                          {inPeriod(g.removed_at) && <><br /><span className="gen-tag rmp">خلال الفترة</span></>}
+                        </span>
+                      ) : <span className="gen-tag st1">ما زال مركّب</span>}
+                    </td>
+                  )}
                   <td>
                     {removed ? (
                       <span className="gen-removed">
@@ -257,7 +282,7 @@ export default function GeneratorsPage() {
               <tr className="tot">
                 <td colSpan={10} style={{ textAlign: 'left' }}>المجموع / Total</td>
                 <td className="mono">{rowsCount}</td>
-                <td colSpan={11}></td>
+                <td colSpan={results ? 12 : 11}></td>
               </tr>
             )}
           </tbody>
@@ -559,6 +584,8 @@ const CSS = `
 .gen-save { width: 100%; margin-top: 14px; border: none; border-radius: 14px; padding: 14px; background: var(--gold); color: #fff; font-family: 'Cairo', sans-serif; font-size: 15px; font-weight: 800; cursor: pointer; }
 .gen-save:disabled { opacity: .5; cursor: default; }
 
+.gen-type-seg { margin-top: 8px; }
+.gen-tag.rmp { background: #FDECEA; color: #B3261E; }
 /* الكمبيوتر: الصفحة بعرض الشاشة والجدول كامل بدون تمرير */
 @media (min-width: 1100px) {
   .gen-wrap { max-width: 1880px; padding-left: 28px; padding-right: 28px; }
