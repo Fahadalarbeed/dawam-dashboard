@@ -10,6 +10,7 @@
 // الاستخدام (كلها تحتاج: Authorization: Bearer CRON_SECRET  أو  ?key=CRON_SECRET):
 //   ?groups=1   قائمة القروبات بالرقم المربوط (عشان تاخذ معرّف القروب)
 //   ?preview=1  يرجّع ملف الـ PDF بدون إرسال
+//   ?test=1     يرسل مع عبارة "رسالة تجربة" فوق الوصف
 //   (بدون شي)   يجهز الـ PDF ويرسله للقروب
 process.env.TZ = 'Asia/Kuwait';
 
@@ -125,6 +126,7 @@ export async function GET(req) {
     const lt = count(rows.filter((g) => g.gen_type === 'LT'));
     const standby = count(rows.filter((g) => g.status === 'standby'));
     const caption = [
+      ...(params.get('test') ? ['🧪 *رسالة تجربة — TEST*'] : []),
       `⚡ جدول مولدات محافظة الفروانية — التقرير ال${periodLabel(now)}`,
       `📅 ${DAYS_AR[now.getDay()]} ${date.replace(/-/g, '/')} — ${pad(now.getHours())}:${pad(now.getMinutes())}`,
       `المجموع: ${count(rows)}  |  H.T: ${ht}  |  L.T: ${lt}${standby ? `  |  ستاند باي: ${standby}` : ''}`,
