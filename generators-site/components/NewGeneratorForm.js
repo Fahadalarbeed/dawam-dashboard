@@ -4,6 +4,7 @@ import { listActiveGenerators, addGenerator, removeGenerator, generatorDays, GEN
 import { getCurrentShiftLetter } from '../lib/shift';
 import { AREA_LIST } from '../lib/constants';
 import LocationPicker from './LocationPicker';
+import { useLang, LangToggle } from '../lib/i18n';
 
 // نموذج تركيب / إزالة مولد — نفس فكرة نموذج Jotform بتصميمنا وبيانات الفروانية
 // كل تسجيل يظهر على طول بجدول المولدات بالصفحة الرئيسية
@@ -27,6 +28,7 @@ const blankGen = () => ({ size: '', no: '', other: false });
 
 // embedded: يفتح كنافذة فوق جدول المولدات بدل صفحة جديدة
 export default function NewGeneratorForm({ embedded = false, onClose, onSaved }) {
+  const { t } = useLang();
   const [mode, setMode] = useState('install'); // install | remove
   const [status, setStatus] = useState('running'); // running | standby
   const [genType, setGenType] = useState(''); // LT | HT
@@ -38,40 +40,41 @@ export default function NewGeneratorForm({ embedded = false, onClose, onSaved })
       <header className="nf-head">
         <img src="/logo.png" alt="" />
         <div style={{ flex: 1 }}>
-          <h1>مولدات محافظة الفروانية</h1>
-          <div className="nf-sub">نموذج تركيب أو إزالة مولد — عبّي البيانات بدقة واضغط إرسال</div>
+          <h1>{t("مولدات محافظة الفروانية")}</h1>
+          <div className="nf-sub">{t("نموذج تركيب أو إزالة مولد — عبّي البيانات بدقة واضغط إرسال")}</div>
         </div>
-        {embedded && <button className="nf-x" onClick={onClose} aria-label="إغلاق">✕</button>}
+        {!embedded && <LangToggle />}
+        {embedded && <button className="nf-x" onClick={onClose} aria-label={t("إغلاق")}>✕</button>}
       </header>
 
       {done ? (
         <div className="nf-card nf-done">
           <div className="nf-ok">✓</div>
-          <h2>{done === 'install' ? 'تم تسجيل تركيب المولد' : 'تم تسجيل إزالة المولد'}</h2>
-          <p>انضاف على طول بجدول المولدات</p>
+          <h2>{done === 'install' ? t('تم تسجيل تركيب المولد') : t('تم تسجيل إزالة المولد')}</h2>
+          <p>{t("انضاف على طول بجدول المولدات")}</p>
           <div className="nf-row">
-            <button className="nf-btn gold" onClick={() => setDone(null)}>➕ تسجيل جديد</button>
+            <button className="nf-btn gold" onClick={() => setDone(null)}>{t("➕ تسجيل جديد")}</button>
             {embedded
-              ? <button className="nf-btn ghost" onClick={onClose}>📋 جدول المولدات</button>
-              : <a className="nf-btn ghost" href="/">📋 جدول المولدات</a>}
+              ? <button className="nf-btn ghost" onClick={onClose}>{t("📋 جدول المولدات")}</button>
+              : <a className="nf-btn ghost" href="/">{t("📋 جدول المولدات")}</a>}
           </div>
         </div>
       ) : (
         <>
           <div className="nf-card">
-            <label className="nf-label">تركيب أو إزالة *</label>
+            <label className="nf-label">{t("تركيب أو إزالة *")}</label>
             <div className="nf-big">
-              <button className={`inst${mode === 'install' ? ' on' : ''}`} onClick={() => setMode('install')}><b>تركيب</b><small>Install</small></button>
-              <button className={`rem${mode === 'remove' ? ' on' : ''}`} onClick={() => setMode('remove')}><b>إزالة</b><small>Remove</small></button>
+              <button className={`inst${mode === 'install' ? ' on' : ''}`} onClick={() => setMode('install')}><b>{t("تركيب")}</b><small>Install</small></button>
+              <button className={`rem${mode === 'remove' ? ' on' : ''}`} onClick={() => setMode('remove')}><b>{t("إزالة")}</b><small>Remove</small></button>
             </div>
             {mode === 'install' && (
               <>
-                <label className="nf-label" style={{ marginTop: 14 }}>حالة المولد *</label>
+                <label className="nf-label" style={{ marginTop: 14 }}>{t("حالة المولد *")}</label>
                 <div className="nf-big">
-                  <button className={`run${status === 'running' ? ' on' : ''}`} onClick={() => setStatus('running')}><b>شغال</b><small>Running</small></button>
-                  <button className={`sb${status === 'standby' ? ' on' : ''}`} onClick={() => setStatus('standby')}><b>ستاند باي</b><small>Stand by</small></button>
+                  <button className={`run${status === 'running' ? ' on' : ''}`} onClick={() => setStatus('running')}><b>{t("شغال")}</b><small>Running</small></button>
+                  <button className={`sb${status === 'standby' ? ' on' : ''}`} onClick={() => setStatus('standby')}><b>{t("ستاند باي")}</b><small>Stand by</small></button>
                 </div>
-                <label className="nf-label" style={{ marginTop: 14 }}>نوع المولد *</label>
+                <label className="nf-label" style={{ marginTop: 14 }}>{t("نوع المولد *")}</label>
                 <div className="nf-big">
                   <button className={`lt${genType === 'LT' ? ' on' : ''}`} onClick={() => setGenType('LT')}><b className="mono">LT</b></button>
                   <button className={`ht${genType === 'HT' ? ' on' : ''}`} onClick={() => setGenType('HT')}><b className="mono">HT</b></button>
@@ -85,13 +88,14 @@ export default function NewGeneratorForm({ embedded = false, onClose, onSaved })
         </>
       )}
       {embedded
-        ? <button className="nf-foot" onClick={onClose}>← رجوع لجدول المولدات</button>
-        : <a className="nf-foot" href="/">← جدول المولدات</a>}
+        ? <button className="nf-foot" onClick={onClose}>{t("← رجوع لجدول المولدات")}</button>
+        : <a className="nf-foot" href="/">{t("← جدول المولدات")}</a>}
     </div>
   );
 }
 
 function InstallForm({ status, genType, onDone }) {
+  const { t } = useLang();
   const [f, setF] = useState({
     shift: '', request_at: nowLocal(), installed_at: nowLocal(),
     gen_count: 1, status: 'running', gen_type: '', area: '', block: '', street: '', plot: '',
@@ -116,17 +120,17 @@ function InstallForm({ status, genType, onDone }) {
   function setGen(i, patch) { setGens((prev) => prev.map((g, j) => (j === i ? { ...g, ...patch } : g))); }
 
   const missing = [];
-  if (!f.shift) missing.push('النوبة');
-  if (!f.request_at) missing.push('وقت طلب التركيب');
-  if (!f.installed_at) missing.push('وقت التركيب');
-  if (gens.some((g) => !g.size)) missing.push('حجم المولد');
-  if (!genType) missing.push('نوع المولد');
-  if (!f.area) missing.push('المنطقة');
-  if (!f.install_reason || (f.install_reason === 'أخرى' && !other.trim())) missing.push('سبب التركيب');
-  if (!f.entered_by.trim()) missing.push('اسم اللي ركّب المولد');
+  if (!f.shift) missing.push(t('النوبة'));
+  if (!f.request_at) missing.push(t('وقت طلب التركيب'));
+  if (!f.installed_at) missing.push(t('وقت التركيب'));
+  if (gens.some((g) => !g.size)) missing.push(t('حجم المولد'));
+  if (!genType) missing.push(t('نوع المولد'));
+  if (!f.area) missing.push(t('المنطقة'));
+  if (!f.install_reason || (f.install_reason === 'أخرى' && !other.trim())) missing.push(t('سبب التركيب'));
+  if (!f.entered_by.trim()) missing.push(t('اسم اللي ركّب المولد'));
 
   async function submit() {
-    if (missing.length) { setErr('عبّي: ' + missing.join('، ')); return; }
+    if (missing.length) { setErr(t('عبّي: ') + missing.join(t('، '))); return; }
     setSaving(true); setErr('');
     try {
       const clean = (v) => (typeof v === 'string' ? (v.trim() || null) : v);
@@ -156,93 +160,94 @@ function InstallForm({ status, genType, onDone }) {
       await addGenerator(row);
       try { if (f.entered_by.trim()) localStorage.setItem('gen_form_name', f.entered_by.trim()); } catch { /* ignore */ }
       onDone();
-    } catch (e) { setErr('تعذر الإرسال: ' + e.message); }
+    } catch (e) { setErr(t('تعذر الإرسال: ') + e.message); }
     finally { setSaving(false); }
   }
 
   return (
     <>
       <div className="nf-card">
-        <label className="nf-label">النوبة * <span className="nf-auto">— تلقائي حسب الجدول</span></label>
+        <label className="nf-label">{t("النوبة *")} <span className="nf-auto">{t("— تلقائي حسب الجدول")}</span></label>
         <div className="nf-chips">{SHIFTS.map((s) => <button key={s} className={f.shift === s ? 'on' : ''} onClick={() => setF({ ...f, shift: s })}>{s}</button>)}</div>
 
         <div className="nf-grid" style={{ marginTop: 12 }}>
-          <div className="full"><label>التاريخ / وقت طلب التركيب *</label><input type="datetime-local" value={f.request_at} onChange={set('request_at')} /></div>
-          <div className="full"><label>وقت التركيب *</label><input type="datetime-local" value={f.installed_at} onChange={set('installed_at')} /></div>
+          <div className="full"><label>{t("التاريخ / وقت طلب التركيب *")}</label><input type="datetime-local" value={f.request_at} onChange={set('request_at')} /></div>
+          <div className="full"><label>{t("وقت التركيب *")}</label><input type="datetime-local" value={f.installed_at} onChange={set('installed_at')} /></div>
         </div>
       </div>
 
       <div className="nf-card">
-        <label className="nf-label">عدد المولدات *</label>
+        <label className="nf-label">{t("عدد المولدات *")}</label>
         <div className="nf-chips">
           {Array.from({ length: Math.max(4, f.gen_count) }, (_, i) => i + 1).map((n) => <button key={n} className={f.gen_count === n ? 'on' : ''} onClick={() => setCount(n)}>{n}</button>)}
           {Math.max(4, f.gen_count) < 10 && (
-            <button className="nf-plus" title="مولد إضافي" onClick={() => setCount(Math.max(4, f.gen_count) + 1)}>+</button>
+            <button className="nf-plus" title={t("مولد إضافي")} onClick={() => setCount(Math.max(4, f.gen_count) + 1)}>+</button>
           )}
         </div>
         {gens.map((g, i) => (
           <div key={i} className="nf-gen">
-            <div className="nf-gen-t">المولد {i + 1}</div>
-            <label>حجم المولد {i + 1} (kVA) *</label>
+            <div className="nf-gen-t">{t('المولد {n}', { n: i + 1 })}</div>
+            <label>{t('حجم المولد {n} (kVA) *', { n: i + 1 })}</label>
             <div className="nf-chips sizes">
               {GEN_SIZES.map((sz) => <button key={sz} className={g.size === sz && !g.other ? 'on' : ''} onClick={() => setGen(i, { size: sz, other: false })}>{sz}</button>)}
-              <button className={g.other ? 'on' : ''} onClick={() => setGen(i, { other: true, size: '' })}>أخرى</button>
+              <button className={g.other ? 'on' : ''} onClick={() => setGen(i, { other: true, size: '' })}>{t("أخرى")}</button>
             </div>
             {g.other && (
-              <input style={{ marginTop: 8 }} inputMode="numeric" value={g.size} onChange={(e) => setGen(i, { size: e.target.value.replace(/[^0-9.]/g, '') })} placeholder="اكتب الحجم kVA" />
+              <input style={{ marginTop: 8 }} inputMode="numeric" value={g.size} onChange={(e) => setGen(i, { size: e.target.value.replace(/[^0-9.]/g, '') })} placeholder={t("اكتب الحجم kVA")} />
             )}
-            <label style={{ marginTop: 8 }}>رقم المولد {i + 1}</label>
-            <input value={g.no} onChange={(e) => setGen(i, { no: e.target.value })} placeholder="رقم المولد" />
+            <label style={{ marginTop: 8 }}>{t('رقم المولد {n}', { n: i + 1 })}</label>
+            <input value={g.no} onChange={(e) => setGen(i, { no: e.target.value })} placeholder={t("رقم المولد")} />
           </div>
         ))}
         <div className="nf-grid" style={{ marginTop: 10 }}>
-          <div className="full"><label>عدد الوايرات</label><input value={f.wires} onChange={set('wires')} placeholder="مثال: 11" /></div>
+          <div className="full"><label>{t("عدد الوايرات")}</label><input value={f.wires} onChange={set('wires')} placeholder={t("مثال: 11")} /></div>
         </div>
       </div>
 
       <div className="nf-card">
-        <label className="nf-label">📍 العنوان</label>
+        <label className="nf-label">{t("📍 العنوان")}</label>
         <div className="nf-grid">
           <div className="full">
-            <label>المنطقة *</label>
+            <label>{t("المنطقة *")}</label>
             <select value={f.area} onChange={set('area')}>
-              <option value="">— اختر المنطقة —</option>
-              {AREA_LIST.map((a) => <option key={a} value={a}>{a}</option>)}
+              <option value="">{t("— اختر المنطقة —")}</option>
+              {AREA_LIST.map((a) => <option key={a} value={a}>{t(a)}</option>)}
             </select>
           </div>
-          <div><label>القطعة</label><input value={f.block} onChange={set('block')} /></div>
-          <div><label>الشارع</label><input value={f.street} onChange={set('street')} /></div>
-          <div className="full"><label>رقم القسيمة</label><input value={f.plot} onChange={set('plot')} /></div>
-          <div className="full"><label>اللوكيشن (مكان المولد)</label><LocationPicker value={loc} onChange={setLoc} /></div>
+          <div><label>{t("القطعة")}</label><input value={f.block} onChange={set('block')} /></div>
+          <div><label>{t("الشارع")}</label><input value={f.street} onChange={set('street')} /></div>
+          <div className="full"><label>{t("رقم القسيمة")}</label><input value={f.plot} onChange={set('plot')} /></div>
+          <div className="full"><label>{t("اللوكيشن (مكان المولد)")}</label><LocationPicker value={loc} onChange={setLoc} /></div>
         </div>
       </div>
 
       <div className="nf-card">
-        <label className="nf-label">🔌 مصدر التغذية</label>
+        <label className="nf-label">{t("🔌 مصدر التغذية")}</label>
         <div className="nf-grid">
           {FEEDS.map(([k, label]) => (
-            <div key={k} className={k === 'unit_no' ? 'full' : ''}><label>{label}</label><input value={f[k]} onChange={set(k)} /></div>
+            <div key={k} className={k === 'unit_no' ? 'full' : ''}><label>{t(label)}</label><input value={f[k]} onChange={set(k)} /></div>
           ))}
         </div>
       </div>
 
       <div className="nf-card">
-        <label className="nf-label">سبب التركيب *</label>
-        <div className="nf-chips">{INSTALL_REASONS.map((r) => <button key={r} className={f.install_reason === r ? 'on' : ''} onClick={() => setF({ ...f, install_reason: r })}>{r}</button>)}</div>
-        {f.install_reason === 'أخرى' && <input style={{ marginTop: 8 }} value={other} onChange={(e) => setOther(e.target.value)} placeholder="اكتب السبب" />}
+        <label className="nf-label">{t("سبب التركيب *")}</label>
+        <div className="nf-chips">{INSTALL_REASONS.map((r) => <button key={r} className={f.install_reason === r ? 'on' : ''} onClick={() => setF({ ...f, install_reason: r })}>{t(r)}</button>)}</div>
+        {f.install_reason === 'أخرى' && <input style={{ marginTop: 8 }} value={other} onChange={(e) => setOther(e.target.value)} placeholder={t("اكتب السبب")} />}
         <div className="nf-grid" style={{ marginTop: 12 }}>
-          <div className="full"><label>الملاحظات</label><textarea rows={3} value={f.notes} onChange={set('notes')} /></div>
-          <div className="full"><label>اسم اللي ركّب المولد *</label><input value={f.entered_by} onChange={set('entered_by')} placeholder="الاسم" /></div>
+          <div className="full"><label>{t("الملاحظات")}</label><textarea rows={3} value={f.notes} onChange={set('notes')} /></div>
+          <div className="full"><label>{t("اسم اللي ركّب المولد *")}</label><input value={f.entered_by} onChange={set('entered_by')} placeholder={t("الاسم")} /></div>
         </div>
       </div>
 
       {err && <div className="nf-err">{err}</div>}
-      <button className="nf-submit" disabled={saving} onClick={submit}>{saving ? 'جارٍ الإرسال...' : 'إرسال'}</button>
+      <button className="nf-submit" disabled={saving} onClick={submit}>{saving ? t('جارٍ الإرسال...') : t('إرسال')}</button>
     </>
   );
 }
 
 function RemoveForm({ onDone }) {
+  const { t } = useLang();
   const [list, setList] = useState(null);
   const [q, setQ] = useState('');
   const [pick, setPick] = useState(null);
@@ -263,31 +268,31 @@ function RemoveForm({ onDone }) {
   }, [list, q]);
 
   async function submit() {
-    if (!pick) { setErr('اختر المولد'); return; }
-    if (!name.trim()) { setErr('اكتب اسم اللي أزال المولد'); return; }
+    if (!pick) { setErr(t('عبّي: ') + t('اختر المولد')); return; }
+    if (!name.trim()) { setErr(t('عبّي: ') + t('اكتب اسم اللي أزال المولد')); return; }
     setSaving(true); setErr('');
     try {
       await removeGenerator(pick.id, name.trim(), { removedAt: toIso(removedAt), requestAt: toIso(requestAt) });
       try { localStorage.setItem('gen_remover_name', name.trim()); } catch { /* ignore */ }
       onDone();
-    } catch (e) { setErr('تعذر الإرسال: ' + e.message); }
+    } catch (e) { setErr(t('تعذر الإرسال: ') + e.message); }
     finally { setSaving(false); }
   }
 
   return (
     <>
       <div className="nf-card">
-        <label className="nf-label">اختر المولد *</label>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 بحث: المنطقة، رقم المولد، المحطة..." />
+        <label className="nf-label">{t("اختر المولد *")}</label>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("🔍 بحث: المنطقة، رقم المولد، المحطة...")} />
         <div className="nf-list">
-          {list === null && <div className="nf-empty">جارٍ التحميل...</div>}
-          {list && shown.length === 0 && <div className="nf-empty">لا توجد مولدات</div>}
+          {list === null && <div className="nf-empty">{t("جارٍ التحميل...")}</div>}
+          {list && shown.length === 0 && <div className="nf-empty">{t("لا توجد مولدات")}</div>}
           {shown.map((g) => (
             <button key={g.id} className={`nf-item${pick?.id === g.id ? ' on' : ''}`} onClick={() => setPick(g)}>
               <span className={`nf-tag ${g.gen_type === 'LT' ? 'lt' : 'ht'}`}>{g.gen_type}</span>
               <span className="nf-item-main">
-                <b>{g.area}{g.block ? ` — قطعة ${g.block}` : ''}{g.street ? ` — شارع ${g.street}` : ''}</b>
-                <small className="mono">{g.size_kva} kVA{g.gen_no ? ` · رقم ${g.gen_no}` : ''} · {fmtDate(g.connected_on)} · {generatorDays(g)} يوم</small>
+                <b>{t(g.area)}{g.block ? ` — ${t('قطعة')} ${g.block}` : ''}{g.street ? ` — ${t('شارع')} ${g.street}` : ''}</b>
+                <small className="mono">{g.size_kva} kVA{g.gen_no ? ` · ${t('رقم')} ${g.gen_no}` : ''} · {fmtDate(g.connected_on)} · {generatorDays(g)} {t('يوم')}</small>
               </span>
             </button>
           ))}
@@ -296,14 +301,14 @@ function RemoveForm({ onDone }) {
 
       <div className="nf-card">
         <div className="nf-grid">
-          <div className="full"><label>التاريخ / وقت طلب الإزالة *</label><input type="datetime-local" value={requestAt} onChange={(e) => setRequestAt(e.target.value)} /></div>
-          <div className="full"><label>وقت الإزالة *</label><input type="datetime-local" value={removedAt} onChange={(e) => setRemovedAt(e.target.value)} /></div>
-          <div className="full"><label>اسم اللي أزال المولد *</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder="الاسم" /></div>
+          <div className="full"><label>{t("التاريخ / وقت طلب الإزالة *")}</label><input type="datetime-local" value={requestAt} onChange={(e) => setRequestAt(e.target.value)} /></div>
+          <div className="full"><label>{t("وقت الإزالة *")}</label><input type="datetime-local" value={removedAt} onChange={(e) => setRemovedAt(e.target.value)} /></div>
+          <div className="full"><label>{t("اسم اللي أزال المولد *")}</label><input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("الاسم")} /></div>
         </div>
       </div>
 
       {err && <div className="nf-err">{err}</div>}
-      <button className="nf-submit rem" disabled={saving} onClick={submit}>{saving ? 'جارٍ الإرسال...' : 'إرسال الإزالة'}</button>
+      <button className="nf-submit rem" disabled={saving} onClick={submit}>{saving ? t('جارٍ الإرسال...') : t('إرسال الإزالة')}</button>
     </>
   );
 }

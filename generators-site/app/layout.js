@@ -1,4 +1,5 @@
 import './globals.css';
+import { LangProvider } from '../lib/i18n';
 
 export const metadata = {
   title: 'مولدات محافظة الفروانية',
@@ -10,7 +11,7 @@ export const viewport = { width: 'device-width', initialScale: 1, themeColor: '#
 export default function RootLayout({ children }) {
   return (
     <html lang="ar" dir="rtl" data-theme="light">
-      <body>{children}</body>
+      <body><LangProvider>{children}</LangProvider></body>
     </html>
   );
 }

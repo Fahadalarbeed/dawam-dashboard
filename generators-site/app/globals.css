@@ -353,3 +353,10 @@ select:focus, input:focus, textarea:focus {
 }
 
 /* four stat boxes always stay on a single row */
+
+/* English mode (ENG button) */
+html[data-lang="en"] .nf-big small { display: none; }
+html[data-lang="en"] .gen-notes { text-align: left !important; }
+html[data-lang="en"] .gen-removed { text-align: left; }
+html[data-lang="en"] .lp-coords span { text-align: left; }
+html[data-lang="en"] .nf-wrap input[type=datetime-local] { text-align: left; }

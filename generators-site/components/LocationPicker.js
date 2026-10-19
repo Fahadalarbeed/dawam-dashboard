@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import 'leaflet/dist/leaflet.css';
+import { useLang } from '../lib/i18n';
 
 // تحديد موقع المولد على الخريطة (Pin) — الخريطة من OpenStreetMap
 // value: { lat, lng } أو null
@@ -11,6 +12,7 @@ export function mapsUrl(lat, lng) {
 }
 
 export default function LocationPicker({ value, onChange }) {
+  const { t } = useLang();
   const [open, setOpen] = useState(false);
   return (
     <div className="lp">
@@ -18,17 +20,17 @@ export default function LocationPicker({ value, onChange }) {
       {value ? (
         <div className="lp-set">
           <div className="lp-coords">
-            <b>📍 تم تحديد الموقع</b>
+            <b>{t("📍 تم تحديد الموقع")}</b>
             <span className="mono">{value.lat.toFixed(6)}, {value.lng.toFixed(6)}</span>
           </div>
           <div className="lp-actions">
-            <a href={mapsUrl(value.lat, value.lng)} target="_blank" rel="noreferrer">عرض</a>
-            <button type="button" onClick={() => setOpen(true)}>تعديل</button>
-            <button type="button" className="rm" onClick={() => onChange(null)}>مسح</button>
+            <a href={mapsUrl(value.lat, value.lng)} target="_blank" rel="noreferrer">{t("عرض")}</a>
+            <button type="button" onClick={() => setOpen(true)}>{t("تعديل")}</button>
+            <button type="button" className="rm" onClick={() => onChange(null)}>{t("مسح")}</button>
           </div>
         </div>
       ) : (
-        <button type="button" className="lp-open" onClick={() => setOpen(true)}>🗺️ حدّد مكان المولد على الخريطة</button>
+        <button type="button" className="lp-open" onClick={() => setOpen(true)}>{t("🗺️ حدّد مكان المولد على الخريطة")}</button>
       )}
       {open && <MapDialog initial={value} onClose={() => setOpen(false)} onPick={(v) => { onChange(v); setOpen(false); }} />}
     </div>
@@ -36,6 +38,7 @@ export default function LocationPicker({ value, onChange }) {
 }
 
 function MapDialog({ initial, onClose, onPick }) {
+  const { t } = useLang();
   const box = useRef(null);
   const mapRef = useRef(null);
   const markerRef = useRef(null);
@@ -70,7 +73,7 @@ function MapDialog({ initial, onClose, onPick }) {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function myLocation() {
-    if (!navigator.geolocation) { setMsg('الجهاز ما يدعم تحديد الموقع'); return; }
+    if (!navigator.geolocation) { setMsg(t('الجهاز ما يدعم تحديد الموقع')); return; }
     setLocating(true); setMsg('');
     navigator.geolocation.getCurrentPosition(
       (p) => {
@@ -79,7 +82,7 @@ function MapDialog({ initial, onClose, onPick }) {
         mapRef.current?.place(lat, lng);
         mapRef.current?.map.setView([lat, lng], 18);
       },
-      () => { setLocating(false); setMsg('ما قدرنا ناخذ موقعك — اسمح للمتصفح بالموقع أو حط الـ Pin بإيدك'); },
+      () => { setLocating(false); setMsg(t('ما قدرنا ناخذ موقعك — اسمح للمتصفح بالموقع أو حط الـ Pin بإيدك')); },
       { enableHighAccuracy: true, timeout: 15000 },
     );
   }
@@ -87,15 +90,15 @@ function MapDialog({ initial, onClose, onPick }) {
   return (
     <div className="lp-dlg">
       <div className="lp-top">
-        <b>حدّد مكان المولد</b>
-        <button type="button" className="lp-x" onClick={onClose} aria-label="إغلاق">✕</button>
+        <b>{t("حدّد مكان المولد")}</b>
+        <button type="button" className="lp-x" onClick={onClose} aria-label={t("إغلاق")}>✕</button>
       </div>
-      <div className="lp-hint">اضغط على الخريطة عشان تحط الـ Pin، وتقدر تسحبه لين يركب على المكان بالضبط</div>
+      <div className="lp-hint">{t("اضغط على الخريطة عشان تحط الـ Pin، وتقدر تسحبه لين يركب على المكان بالضبط")}</div>
       <div ref={box} className="lp-map" />
       {msg && <div className="lp-msg">{msg}</div>}
       <div className="lp-bottom">
-        <button type="button" className="lp-me" onClick={myLocation} disabled={locating}>{locating ? '... جاري التحديد' : '📡 موقعي الحالي'}</button>
-        <button type="button" className="lp-ok" disabled={!pos} onClick={() => onPick(pos)}>✓ تأكيد الموقع</button>
+        <button type="button" className="lp-me" onClick={myLocation} disabled={locating}>{locating ? t('... جاري التحديد') : t('📡 موقعي الحالي')}</button>
+        <button type="button" className="lp-ok" disabled={!pos} onClick={() => onPick(pos)}>{t("✓ تأكيد الموقع")}</button>
       </div>
     </div>
   );
