@@ -51,7 +51,7 @@ function tableFor(rows, typeLabel, showRemoved) {
   const body = rows.map((g, i) => {
     const sb = g.status === 'standby';
     const rm = !!g.removed_at;
-    return `<tr class="${rm ? 'rm' : sb ? 'sb' : ''}"><td>${i + 1}</td><td>${esc(g.area)}</td><td>${esc(g.block)}</td><td>${esc(g.street)}</td><td>${esc(g.plot)}</td><td>${g.lat != null && g.lng != null ? `<a href="https://www.google.com/maps?q=${g.lat},${g.lng}" style="color:#B3261E;font-weight:700;text-decoration:none">📍 خريطة</a>` : ''}</td>`
+    return `<tr class="${rm ? 'rm' : sb ? 'sb' : ''}"><td>${i + 1}</td><td>${esc(g.area)}</td><td>${esc(g.block)}</td><td>${esc(g.street)}</td><td>${esc(g.plot)}</td><td>${g.lat != null && g.lng != null ? `<a href="https://www.google.com/maps?q=${g.lat},${g.lng}" style="display:inline-block;padding:4px 10px;border:1.5px solid #B3261E;border-radius:999px;color:#B3261E;font-weight:700;text-decoration:none">📍 خريطة</a>` : ''}</td>`
       + `<td class="mono">${esc(g.station)}</td><td class="mono">${esc(g.uds)}</td><td class="mono">${esc(g.spur)}</td><td class="mono">${esc(g.transformer)}</td><td class="mono">${esc(g.unit_no)}</td>`
       + `<td class="mono">${esc(g.gen_count)}</td><td class="mono"><b>${esc(g.size_kva)}</b></td><td class="mono">${esc(g.gen_no)}</td><td class="mono">${esc(g.wires)}</td>`
       + `<td>${sb ? 'ستاند باي' : 'شغال'}</td><td><b>${esc(g.shift)}</b></td><td class="mono">${fdate(g.connected_on)}${g.installed_at ? `<br/><span style="font-size:14px;color:#555">${fdatetime(g.installed_at).slice(-5)}</span>` : ''}${g.entered_by ? `<br/><span style="font-size:14px;font-family:Cairo,sans-serif;font-weight:700">${esc(g.entered_by)}</span>` : ''}</td><td class="mono"><b>${generatorDays(g)}</b></td>`

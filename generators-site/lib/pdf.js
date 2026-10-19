@@ -41,6 +41,14 @@ export async function htmlToPdfBlob(innerHtml, orientation = 'p', scale = 3.5, q
     windowHeight: el.scrollHeight,
   });
 
+  // روابط قابلة للضغط (مثل 📍 خريطة) — نحفظ مكانها قبل ما نشيل العنصر
+  const elRect = el.getBoundingClientRect();
+  const links = [...el.querySelectorAll('a[href]')].map((a) => {
+    const r = a.getBoundingClientRect();
+    return { url: a.href, x: r.left - elRect.left, y: r.top - elRect.top, w: r.width, h: r.height };
+  });
+  const cssWidth = elRect.width;
+
   document.body.removeChild(host);
 
   const imgData = canvas.toDataURL('image/jpeg', quality);
@@ -60,6 +68,16 @@ export async function htmlToPdfBlob(innerHtml, orientation = 'p', scale = 3.5, q
     pdf.addPage();
     pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
     heightLeft -= pageHeight;
+  }
+
+  // نحط الروابط فوق الصورة بنفس مكانها، بالصفحة الصح
+  const k = imgWidth / cssWidth;
+  const pages = pdf.getNumberOfPages();
+  for (const l of links) {
+    const y = l.y * k;
+    const page = Math.min(pages - 1, Math.floor(y / pageHeight));
+    pdf.setPage(page + 1);
+    pdf.link(l.x * k, y - page * pageHeight, l.w * k, l.h * k, { url: l.url });
   }
 
   return pdf.output('blob');
