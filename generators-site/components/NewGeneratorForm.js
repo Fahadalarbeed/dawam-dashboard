@@ -174,7 +174,12 @@ function InstallForm({ status, genType, onDone }) {
 
       <div className="nf-card">
         <label className="nf-label">عدد المولدات *</label>
-        <div className="nf-chips">{[1, 2, 3, 4].map((n) => <button key={n} className={f.gen_count === n ? 'on' : ''} onClick={() => setCount(n)}>{n}</button>)}</div>
+        <div className="nf-chips">
+          {Array.from({ length: Math.max(4, f.gen_count) }, (_, i) => i + 1).map((n) => <button key={n} className={f.gen_count === n ? 'on' : ''} onClick={() => setCount(n)}>{n}</button>)}
+          {Math.max(4, f.gen_count) < 10 && (
+            <button className="nf-plus" title="مولد إضافي" onClick={() => setCount(Math.max(4, f.gen_count) + 1)}>+</button>
+          )}
+        </div>
         {gens.map((g, i) => (
           <div key={i} className="nf-gen">
             <div className="nf-gen-t">المولد {i + 1}</div>
@@ -305,6 +310,7 @@ function RemoveForm({ onDone }) {
 
 const CSS = `
 .nf-wrap { max-width: 620px; padding-bottom: 40px; }
+.nf-chips .nf-plus { border-style: dashed !important; color: var(--gold) !important; font-size: 18px !important; }
 .nf-embed { margin: 0 auto; }
 .nf-x { width: 36px; height: 36px; flex: none; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); font-size: 15px; cursor: pointer; }
 button.nf-foot { background: none; border: none; cursor: pointer; font-family: 'Cairo', sans-serif; width: 100%; }

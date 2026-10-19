@@ -54,6 +54,14 @@ export async function setGeneratorStatus(id, status) {
   if (error) throw error;
 }
 
+// تعديل بيانات مولد مسجّل (مع اسم ووقت اللي عدّل)
+export async function updateGenerator(id, patch, editorName) {
+  const { error } = await supabase.from('generators')
+    .update({ ...patch, edited_by: editorName, edited_at: new Date().toISOString() })
+    .eq('id', id);
+  if (error) throw error;
+}
+
 // تحديث مباشر: أي مولد ينضاف أو يتعدل من أي صفحة يظهر على طول
 export function subscribeGenerators(onChange) {
   const ch = supabase

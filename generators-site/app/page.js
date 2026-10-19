@@ -1,7 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  listActiveGenerators, searchGenerators, addGenerator, removeGenerator, setGeneratorStatus,
+  listActiveGenerators, searchGenerators, addGenerator, removeGenerator, setGeneratorStatus, updateGenerator,
   generatorDays, subscribeGenerators,
 } from '../lib/generatorsApi';
 import { getCurrentShiftLetter } from '../lib/shift';
@@ -9,7 +9,7 @@ import { AREA_LIST } from '../lib/constants';
 import { htmlToPdfBlob, downloadBlob, sharePdf } from '../lib/pdf';
 import { buildGeneratorsDoc } from '../lib/generatorsReport';
 import NewGeneratorForm from '../components/NewGeneratorForm';
-import { mapsUrl } from '../components/LocationPicker';
+import LocationPicker, { mapsUrl } from '../components/LocationPicker';
 
 // مولدات محافظة الفروانية — صفحة عامة بدون تسجيل دخول (قاعدة بيانات منفصلة)
 const GEN_SIZES = ['1800', '1250', '1150', '1000', '950', '850', '750', '625', '500', '450', '320', '180', '150'];
@@ -24,6 +24,19 @@ function fmtDate(v) {
   if (!v) return '—';
   const d = new Date(v.length === 10 ? `${v}T00:00:00` : v);
   return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+// مدة التشغيل: من وقت التركيب (أو تاريخ الإيصال) لين الإزالة أو الحين
+function runMs(g) {
+  const start = g.installed_at ? new Date(g.installed_at) : new Date(`${g.connected_on}T00:00:00+03:00`);
+  const end = g.removed_at ? new Date(g.removed_at) : new Date();
+  return Math.max(0, end - start);
+}
+function fmtDur(ms) {
+  const h = Math.floor(ms / 3600000);
+  const d = Math.floor(h / 24);
+  const hh = h % 24;
+  if (!d) return `${hh} ساعة`;
+  return hh ? `${d} يوم و ${hh} ساعة` : `${d} يوم`;
 }
 function En({ children, style }) {
   return <span className="en-sub" style={style}>{children}</span>;
@@ -41,6 +54,7 @@ export default function GeneratorsPage() {
   const [filter, setFilter] = useState('all'); // all | running | standby | LT | HT
   const [showForm, setShowForm] = useState(false);
   const [showEntry, setShowEntry] = useState(false); // نافذة تركيب / إزالة
+  const [editing, setEditing] = useState(null); // المولد اللي ينعدّل
   const [showSearch, setShowSearch] = useState(false);
   const [search, setSearch] = useState({ by: 'connected', from: '', to: '' });
   const [results, setResults] = useState(null);
@@ -216,6 +230,24 @@ export default function GeneratorsPage() {
         </div>
       )}
 
+      {results && rows.length > 0 && (() => {
+        const totalMs = rows.reduce((s, g) => s + runMs(g) * (g.gen_count || 1), 0);
+        const kva = rows.reduce((s, g) => s + String(g.size_kva || '').split('+').reduce((a, x) => a + (parseFloat(x) || 0), 0), 0);
+        const ht = rows.filter((g) => g.gen_type === 'HT').reduce((s, g) => s + (g.gen_count || 1), 0);
+        const lt = rows.filter((g) => g.gen_type === 'LT').reduce((s, g) => s + (g.gen_count || 1), 0);
+        const rm = rows.filter((g) => g.removed_at).reduce((s, g) => s + (g.gen_count || 1), 0);
+        return (
+          <div className="gen-stats">
+            <div><span>عدد المولدات</span><b className="mono">{rowsCount}</b></div>
+            <div><span>HT / LT</span><b className="mono">{ht} / {lt}</b></div>
+            <div><span>مُزال</span><b className="mono">{rm}</b></div>
+            <div><span>مجموع القدرة</span><b className="mono">{kva.toLocaleString('en-US')} kVA</b></div>
+            <div className="wide"><span>إجمالي وقت التشغيل</span><b>{fmtDur(totalMs)}</b></div>
+            <div className="wide"><span>متوسط التشغيل للمولد</span><b>{fmtDur(totalMs / Math.max(1, rowsCount))}</b></div>
+          </div>
+        );
+      })()}
+
       <div className="gen-tabs">
         {TABS.map(([k, label]) => (
           <button key={k} className={filter === k ? 'on' : ''} onClick={() => setFilter(k)}>{label}</button>
@@ -235,7 +267,7 @@ export default function GeneratorsPage() {
               <th className="grp" rowSpan={2}>النوع</th>
               <th className="grp" rowSpan={2}>النوبة</th>
               <th className="grp" rowSpan={2}>تاريخ التركيب</th>
-              <th className="grp" rowSpan={2}>الأيام</th>
+              <th className="grp" rowSpan={2}>{results ? 'مدة التشغيل' : 'الأيام'}</th>
               <th className="grp" rowSpan={2}>سبب التركيب</th>
               <th className="grp" rowSpan={2}>ملاحظات</th>
               {results && <th className="grp" rowSpan={2}>تاريخ الإزالة</th>}
@@ -269,7 +301,7 @@ export default function GeneratorsPage() {
                   <td><span className={`gen-tag ${g.gen_type === 'LT' ? 'lt' : 'ht'}`}>{g.gen_type}</span></td>
                   <td><b>{g.shift}</b></td>
                   <td className="mono">{fmtDate(g.connected_on)}{g.installed_at && <><br /><small style={{ color: 'var(--text-muted)' }}>{new Date(g.installed_at).toTimeString().slice(0, 5)}</small></>}{g.entered_by && <><br /><span className="gen-who">👤 {g.entered_by}</span></>}</td>
-                  <td className="mono"><b>{generatorDays(g)}</b></td>
+                  <td className={results ? '' : 'mono'}>{results ? <span className="gen-dur">{fmtDur(runMs(g))}</span> : <b>{generatorDays(g)}</b>}</td>
                   <td className="gen-notes"><b>{g.install_reason}</b></td>
                   <td className="gen-notes">{g.notes}</td>
                   {results && (
@@ -291,6 +323,7 @@ export default function GeneratorsPage() {
                       </span>
                     ) : (
                       <div style={{ display: 'flex', gap: 4 }}>
+                        <button className="gen-ed" disabled={busyId === g.id} onClick={() => setEditing(g)}>✏️ تعديل</button>
                         <button className="gen-rm" disabled={busyId === g.id} onClick={() => setRemoving(g)}>🗑️ إزالة المولد</button>
                         <button className="gen-sw" disabled={busyId === g.id} onClick={() => handleToggle(g)}>{sb ? '← شغال' : '← ستاند باي'}</button>
                       </div>
@@ -320,6 +353,7 @@ export default function GeneratorsPage() {
       )}
       {removing && <RemoveDialog g={removing} busy={busyId === removing.id} onCancel={() => setRemoving(null)} onConfirm={confirmRemove} />}
       {showForm && <GeneratorForm onClose={() => setShowForm(false)} onSaved={async () => { setShowForm(false); await load(); }} />}
+      {editing && <GeneratorForm initial={editing} onClose={() => setEditing(null)} onSaved={async () => { setEditing(null); await load(); }} />}
     </div>
   );
 }
@@ -353,8 +387,15 @@ function RemoveDialog({ g, busy, onCancel, onConfirm }) {
   );
 }
 
-function GeneratorForm({ onClose, onSaved }) {
-  const [f, setF] = useState({ ...EMPTY, connected_on: todayISO() });
+function GeneratorForm({ initial, onClose, onSaved }) {
+  const isEdit = !!initial;
+  const [f, setF] = useState(() => {
+    if (!initial) return { ...EMPTY, connected_on: todayISO() };
+    const base = Object.fromEntries(Object.keys(EMPTY).map((k) => [k, initial[k] ?? EMPTY[k]]));
+    return { ...base, gen_count: initial.gen_count || 1, size_kva: initial.size_kva || '', entered_by: initial.entered_by || '' };
+  });
+  const [loc, setLoc] = useState(initial && initial.lat != null ? { lat: initial.lat, lng: initial.lng } : null);
+  const [editor, setEditor] = useState(() => { try { return localStorage.getItem('gen_editor_name') || ''; } catch { return ''; } });
   const [saving, setSaving] = useState(false);
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
   // الحجم: مولد واحد ← اختيار واحد، أكثر من مولد ← يتجمّع مثل 500+625
@@ -381,8 +422,14 @@ function GeneratorForm({ onClose, onSaved }) {
   const autoShift = getCurrentShiftLetter();
   const autoDate = todayISO();
   const [otherReason, setOtherReason] = useState('');
+  // التعديل: سبب مو من القائمة ← "أخرى" + النص
+  useEffect(() => {
+    if (!initial || !initial.install_reason || INSTALL_REASONS.includes(initial.install_reason)) return;
+    setF((p) => ({ ...p, install_reason: 'أخرى' }));
+    setOtherReason(String(initial.install_reason).replace(/^أخرى - /, ''));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const reasonOk = f.install_reason && (f.install_reason !== 'أخرى' || otherReason.trim());
-  const valid = f.gen_type && f.area.trim() && reasonOk;
+  const valid = f.gen_type && f.area.trim() && reasonOk && (!isEdit || (editor.trim() && f.shift && f.connected_on));
 
   async function save() {
     if (!valid) return;
@@ -390,7 +437,18 @@ function GeneratorForm({ onClose, onSaved }) {
     try {
       const row = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, typeof v === 'string' ? (v.trim() || null) : v]));
       if (f.install_reason === 'أخرى') row.install_reason = `أخرى - ${otherReason.trim()}`;
-      row.gen_count = Math.max(1, parseInt(f.gen_count, 10) || 1);
+      row.gen_count = Math.min(10, Math.max(1, parseInt(f.gen_count, 10) || 1));
+      if (isEdit) {
+        const where = [f.area, f.block && `ق ${f.block}`].filter(Boolean).join(' — ');
+        if (!window.confirm(`متأكد تبي تحفظ التعديل على المولد؟\n\n${f.gen_type} — ${where}\nالحجم: ${f.size_kva || '—'} kVA`)) { setSaving(false); return; }
+        delete row.status; // الحالة تتغير من زر شغال/ستاند باي
+        row.lat = loc ? Number(loc.lat.toFixed(7)) : null;
+        row.lng = loc ? Number(loc.lng.toFixed(7)) : null;
+        try { localStorage.setItem('gen_editor_name', editor.trim()); } catch { /* ignore */ }
+        await updateGenerator(initial.id, row, editor.trim());
+        await onSaved();
+        return;
+      }
       row.shift = getCurrentShiftLetter();
       row.connected_on = todayISO();
       await addGenerator(row);
@@ -412,7 +470,7 @@ function GeneratorForm({ onClose, onSaved }) {
       <div className="gen-sheet" onClick={(e) => e.stopPropagation()} role="dialog">
         <div className="gen-grip" />
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontWeight: 800, fontSize: 17 }}>إدخال مولد جديد<En>New generator</En></div>
+          <div style={{ fontWeight: 800, fontSize: 17 }}>{isEdit ? <>تعديل بيانات المولد<En>Edit generator</En></> : <>إدخال مولد جديد<En>New generator</En></>}</div>
           <button className="gen-x" onClick={onClose} aria-label="إغلاق">✕</button>
         </div>
 
@@ -424,13 +482,13 @@ function GeneratorForm({ onClose, onSaved }) {
           </div>
         </div>
 
-        <div className="gen-fs">
+        {!isEdit && <div className="gen-fs">
           <h4>📶 حالة المولد</h4>
           <div className="gen-big">
             <button className={`run${f.status === 'running' ? ' on' : ''}`} onClick={() => setF({ ...f, status: 'running' })}><b className="t">شغال</b><small>Running</small></button>
             <button className={`sb${f.status === 'standby' ? ' on' : ''}`} onClick={() => setF({ ...f, status: 'standby' })}><b className="t">ستاند باي</b><small>Standby</small></button>
           </div>
-        </div>
+        </div>}
 
         <div className="gen-fs">
           <h4>📝 سبب التركيب *</h4>
@@ -441,7 +499,7 @@ function GeneratorForm({ onClose, onSaved }) {
           </div>
           {f.install_reason === 'أخرى' && (
             <div className="gen-fg" style={{ marginTop: 8 }}>
-              <div className="full"><input value={otherReason} onChange={(e) => setOtherReason(e.target.value)} placeholder="اكتب السبب" /></div>
+              <div className="full"><input type="text" value={otherReason} onChange={(e) => setOtherReason(e.target.value)} placeholder="اكتب السبب" /></div>
             </div>
           )}
         </div>
@@ -459,6 +517,7 @@ function GeneratorForm({ onClose, onSaved }) {
             {Field({ k: 'block', label: 'القطعة', en: 'Block' })}
             {Field({ k: 'street', label: 'الشارع', en: 'Street' })}
             {Field({ k: 'plot', label: 'رقم القسيمة', en: 'Plot', full: true })}
+            {isEdit && <div className="full"><label>اللوكيشن<span>Location</span></label><LocationPicker value={loc} onChange={setLoc} /></div>}
           </div>
         </div>
 
@@ -509,10 +568,21 @@ function GeneratorForm({ onClose, onSaved }) {
 
         <div className="gen-fs">
           <h4>🗓️ النوبة والتاريخ <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: 11 }}>— تلقائي</span></h4>
-          <div className="gen-auto">
-            <div><span>النوبة</span><b>{autoShift}</b></div>
-            <div><span>تاريخ الإيصال</span><b className="mono">{fmtDate(autoDate)}</b></div>
-          </div>
+          {isEdit ? (
+            <div className="gen-fg">
+              <div className="full">
+                <label>النوبة<span>Shift</span></label>
+                <div className="gen-chips">{['A', 'B', 'C', 'D', 'E'].map((x) => <button key={x} type="button" className={f.shift === x ? 'on' : ''} onClick={() => setF({ ...f, shift: x })}>{x}</button>)}</div>
+              </div>
+              {Field({ k: 'connected_on', label: 'تاريخ الإيصال', en: 'Date', type: 'date' })}
+              {Field({ k: 'entered_by', label: 'اسم اللي ركّب', en: 'Installed by' })}
+            </div>
+          ) : (
+            <div className="gen-auto">
+              <div><span>النوبة</span><b>{autoShift}</b></div>
+              <div><span>تاريخ الإيصال</span><b className="mono">{fmtDate(autoDate)}</b></div>
+            </div>
+          )}
           <div className="gen-fg" style={{ marginTop: 8 }}>
             <div className="full">
               <label>ملاحظات<span>Notes</span></label>
@@ -521,10 +591,16 @@ function GeneratorForm({ onClose, onSaved }) {
           </div>
         </div>
 
+        {isEdit && (
+          <div className="gen-fs">
+            <h4>👤 اسم اللي عدّل *</h4>
+            <div className="gen-fg"><div className="full"><input type="text" value={editor} onChange={(e) => setEditor(e.target.value)} placeholder="اسمك" /></div></div>
+          </div>
+        )}
         <button className="gen-save" disabled={!valid || saving} onClick={save}>
-          {saving ? 'جارٍ الحفظ...' : '💾 حفظ المولد / Save'}
+          {saving ? 'جارٍ الحفظ...' : isEdit ? '💾 حفظ التعديل' : '💾 حفظ المولد / Save'}
         </button>
-        {!valid && <div className="gen-hint" style={{ textAlign: 'center' }}>الخانات المطلوبة: نوع المولد، سبب التركيب، المنطقة</div>}
+        {!valid && <div className="gen-hint" style={{ textAlign: 'center' }}>{isEdit ? 'الخانات المطلوبة: نوع المولد، سبب التركيب، المنطقة، النوبة، التاريخ، اسم اللي عدّل' : 'الخانات المطلوبة: نوع المولد، سبب التركيب، المنطقة'}</div>}
       </div>
     </div>
   );
@@ -619,6 +695,13 @@ const CSS = `
 @media (max-width: 640px) { .gen-entry { padding: 0; } .gen-entry-box { border-radius: 0; min-height: 100%; } }
 .gen-who { font-family: 'Cairo', sans-serif; font-size: 11.5px; font-weight: 700; color: var(--navy); white-space: nowrap; }
 .gen-loc { display: inline-block; white-space: nowrap; background: #FDECEA; color: #B3261E; border-radius: 999px; padding: 3px 9px; font-size: 11.5px; font-weight: 700; text-decoration: none; }
+.gen-ed { border: 1px solid #B9C7E6; background: #EEF3FC; color: #1B3A78; border-radius: 9px; padding: 5px 9px; font-family: 'Cairo', sans-serif; font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.gen-dur { font-size: 12px; font-weight: 700; color: var(--navy); white-space: nowrap; }
+.gen-stats { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; margin-bottom: 10px; }
+.gen-stats > div { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; }
+.gen-stats span { display: block; font-size: 11.5px; color: var(--text-muted); }
+.gen-stats b { font-size: 16px; font-weight: 800; color: var(--navy); }
+@media (min-width: 900px) { .gen-stats { grid-template-columns: repeat(6, minmax(0,1fr)); } }
 /* الكمبيوتر: الصفحة بعرض الشاشة والجدول كامل بدون تمرير */
 @media (min-width: 1100px) {
   .gen-wrap { max-width: 1880px; padding-left: 28px; padding-right: 28px; }
