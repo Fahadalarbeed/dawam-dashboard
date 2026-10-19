@@ -9,8 +9,9 @@ export async function listActiveGenerators() {
     .from('generators')
     .select('*')
     .is('removed_at', null)
-    .order('connected_on', { ascending: false })
-    .order('created_at', { ascending: false });
+    .order('connected_on', { ascending: true })   // رقم 1 = أقدم مولد
+    .order('installed_at', { ascending: true, nullsFirst: true })
+    .order('created_at', { ascending: true });
   if (error) throw error;
   return data || [];
 }
@@ -21,11 +22,11 @@ export async function searchGenerators({ by, from, to }) {
     q = q.not('removed_at', 'is', null);
     if (from) q = q.gte('removed_at', `${from}T00:00:00+03:00`);
     if (to) q = q.lte('removed_at', `${to}T23:59:59+03:00`);
-    q = q.order('removed_at', { ascending: false });
+    q = q.order('removed_at', { ascending: true });
   } else {
     if (from) q = q.gte('connected_on', from);
     if (to) q = q.lte('connected_on', to);
-    q = q.order('connected_on', { ascending: false });
+    q = q.order('connected_on', { ascending: true }).order('installed_at', { ascending: true, nullsFirst: true }).order('created_at', { ascending: true });
   }
   const { data, error } = await q;
   if (error) throw error;

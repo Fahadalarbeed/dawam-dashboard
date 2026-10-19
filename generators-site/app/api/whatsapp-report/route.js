@@ -67,7 +67,7 @@ async function activeGenerators() {
   const supabase = createClient(SUPA_URL, SUPA_KEY, { auth: { persistSession: false } });
   const { data, error } = await supabase
     .from('generators').select('*').is('removed_at', null)
-    .order('connected_on', { ascending: false }).order('created_at', { ascending: false });
+    .order('connected_on', { ascending: true }).order('installed_at', { ascending: true, nullsFirst: true }).order('created_at', { ascending: true });
   if (error) throw error;
   return data || [];
 }
