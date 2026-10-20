@@ -113,7 +113,7 @@ export async function GET(req) {
     const rows = await activeGenerators();
     const pdf = Buffer.from(await renderPdf(req.nextUrl.origin, rows));
     const date = `${pad(now.getDate())}-${pad(now.getMonth() + 1)}-${now.getFullYear()}`;
-    const fileName = `مولدات-الفروانية-${date}-${pad(now.getHours())}${pad(now.getMinutes())}.pdf`;
+    const fileName = `Farwaniya-Generators-${date}-${pad(now.getHours())}${pad(now.getMinutes())}.pdf`; // اسم إنجليزي عشان ما يتلخبط بالواتساب
 
     if (params.get('preview')) {
       return new Response(pdf, { headers: { 'content-type': 'application/pdf', 'content-disposition': `inline; filename*=UTF-8''${encodeURIComponent(fileName)}` } });
