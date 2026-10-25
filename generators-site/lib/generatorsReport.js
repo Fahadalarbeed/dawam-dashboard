@@ -32,7 +32,7 @@ const STYLES = `
 .gen-doc th{background:#EDE6D3;font-weight:700;font-size:16px;}
 .gen-doc th.grp{background:#DCD2B8;font-size:17px;}
 .gen-doc td.n{text-align:right;min-width:150px;}
-.gen-doc .mono{font-family:'IBM Plex Mono',monospace;direction:ltr;unicode-bidi:embed;}
+.gen-doc .mono{font-family:'IBM Plex Mono','Cairo',monospace;direction:ltr;unicode-bidi:embed;}
 .gen-doc tr.sb td{background:#FFF8E6;}
 .gen-doc tr.rm td{background:#F3F3F3;color:#666;}
 .gen-doc tr.tot td{background:#F4F1E8;font-weight:800;font-size:19px;}
