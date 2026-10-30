@@ -98,6 +98,7 @@ async function renderPdf(origin, rows) {
 
 export async function GET(req) {
   if (!authorized(req)) return Response.json({ ok: false, error: 'unauthorized' }, { status: 401 });
+  console.log('whatsapp-report call', req.nextUrl.search.replace(/key=[^&]+/, 'key=***'));
   const params = req.nextUrl.searchParams;
   try {
     if (params.get('groups')) {
@@ -139,6 +140,7 @@ export async function GET(req) {
       mediaCaption: caption,
       asDocument: true,
     });
+    console.log('whatsapp-report sent', JSON.stringify({ chatId, generators: count(rows), bytes: pdf.length, at: now.toISOString() }));
     return Response.json({ ok: true, sent: true, chatId, generators: count(rows), bytes: pdf.length });
   } catch (e) {
     console.error('whatsapp-report', e);
