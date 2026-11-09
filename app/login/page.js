@@ -14,10 +14,18 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    let error;
+    try {
+      ({ error } = await supabase.auth.signInWithPassword({ email: email.trim(), password }));
+    } catch (e) { error = e; }
     setLoading(false);
     if (error) {
-      setError('فشل تسجيل الدخول: تأكد من البريد وكلمة المرور');
+      // نوضّح السبب الحقيقي بدل رسالة وحدة لكل شي
+      const m = String(error.message || error);
+      if (/invalid login credentials/i.test(m)) setError('فشل تسجيل الدخول: البريد أو كلمة المرور غلط');
+      else if (/email not confirmed/i.test(m)) setError('فشل تسجيل الدخول: البريد ما تفعّل بعد');
+      else if (/fetch|network|load failed|timeout|5\d\d/i.test(m)) setError('فشل تسجيل الدخول: ما قدرنا نوصل للسيرفر (ممكن قاعدة البيانات موقوفة) — ' + m);
+      else setError('فشل تسجيل الدخول: ' + m);
       return;
     }
     router.replace('/dashboard');
